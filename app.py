@@ -1229,8 +1229,12 @@ def seed():
     print("Database seeded with demo accounts (password: 1234).")
 
 
+# Seed the database at import time so it also runs under a production
+# server (gunicorn), not just when this file is executed directly.
+seed()
+
+
 if __name__ == "__main__":
-    seed()
     print("=" * 60)
     print(" AthletixAI backend running -> http://127.0.0.1:5000")
     print(" Email mode:", "DEV (codes in console)" if EMAIL_DEV_MODE
