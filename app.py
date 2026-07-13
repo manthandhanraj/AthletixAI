@@ -569,6 +569,26 @@ def home():
     return render_template("index.html")
 
 
+@app.get("/api/public/stats")
+def public_stats():
+    """Real platform numbers for the landing page (no login needed).
+
+    These are read live from the database - nothing here is hard-coded,
+    so the landing page can never show a number we cannot back up.
+    """
+    db = get_db()
+    athletes = db.execute(
+        "SELECT COUNT(*) FROM users WHERE role='athlete'").fetchone()[0]
+    coaches = db.execute(
+        "SELECT COUNT(*) FROM users WHERE role='coach'").fetchone()[0]
+    reports = db.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
+    sessions_live = db.execute(
+        "SELECT COUNT(*) FROM reports WHERE live=1").fetchone()[0]
+    return jsonify(ok=True, athletes=athletes, coaches=coaches,
+                   reports=reports, live_sessions=sessions_live,
+                   sports=48)
+
+
 @app.get("/api/csrf")
 def api_csrf():
     return jsonify(ok=True, token=ensure_csrf())

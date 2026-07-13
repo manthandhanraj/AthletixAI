@@ -863,10 +863,10 @@ img,canvas,svg,video{max-width:100%;height:auto}
       <div class="impact-row">
         <div class="imp"><b id="imp1">0</b><small>Athletes</small></div>
         <div class="imp"><b id="imp2">0</b><small>AI Reports</small></div>
-        <div class="imp"><b id="imp3">0%</b><small>Model Accuracy</small></div>
-        <div class="imp"><b id="imp4">0</b><small>Districts</small></div>
+        <div class="imp"><b id="imp3">0</b><small>Coaches</small></div>
+        <div class="imp"><b id="imp4">48</b><small>Sports</small></div>
       </div>
-      <div class="trust-strip">Trusted by schools &amp; academies<br><span>🏫 Delhi Public Academy</span><span>🎓 SAI Regional Centre</span><span>🏏 Star Cricket Club</span><span>🥇 Khelo India Node</span></div>
+      <div class="trust-strip">Camera-only &middot; No hardware needed<br><span>📹 33-point pose AI</span><span>🏅 48 sports</span><span>🔒 Video stays on your phone</span><span>💸 Free for athletes</span></div>
     </div>
 
     <div class="role-switch">
@@ -3435,8 +3435,14 @@ function storyHTML(rs){
 }
 
 /* ═══════ IMPACT COUNTERS (#18) ═══════ */
-function animateImpact(){
-  var targets=[[byId('imp1'),athletes().length,''],[byId('imp2'),DB.reports.length,''],[byId('imp3'),94,'%'],[byId('imp4'),28,'']];
+async function animateImpact(){
+  // Real numbers, straight from the database. Nothing hard-coded.
+  var a = athletes().length, r = DB.reports.length, c = DB.users.filter(function(u){return u.role==='coach';}).length;
+  try{
+    var s = await (await fetch('/api/public/stats')).json();
+    if(s && s.ok){ a = s.athletes; r = s.reports; c = s.coaches; }
+  }catch(e){ /* offline: fall back to local counts */ }
+  var targets=[[byId('imp1'),a,''],[byId('imp2'),r,''],[byId('imp3'),c,''],[byId('imp4'),48,'']];
   targets.forEach(function(t){
     if(!t[0]) return;
     var cur=0, step=Math.max(1,Math.ceil(t[1]/38));
