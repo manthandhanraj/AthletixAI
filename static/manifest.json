@@ -1,0 +1,17 @@
+{
+  "name": "AthletixAI — AI Sports Talent Platform",
+  "short_name": "AthletixAI",
+  "description": "AI-powered sports talent assessment. Record a video, get an instant performance report.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C0D10",
+  "theme_color": "#0C0D10",
+  "categories": ["sports", "health", "education"],
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

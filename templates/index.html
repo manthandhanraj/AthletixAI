@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0C0D10">
+<meta name="description" content="AI-powered sports talent assessment. Record a video, get an instant performance report across 48 sports.">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/static/icon-192.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AthletixAI">
   <title>AthletixAI — AI Sports Talent Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -836,6 +844,12 @@ body.owner .role-pill{color:#0C0D10 !important;background:var(--grad) !important
 html,body{max-width:100%;overflow-x:hidden}
 img,canvas,svg,video{max-width:100%;height:auto}
 
+
+/* legal note under the demo hint on the auth card */
+.legal-note{display:block;width:100%;grid-column:1/-1;text-align:center;margin:12px 0 2px;
+  font-size:11.5px;line-height:1.75;color:var(--dim);}
+.legal-note a{color:var(--gold2);text-decoration:none;font-weight:600;}
+.legal-note a:hover{text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -930,6 +944,12 @@ img,canvas,svg,video{max-width:100%;height:auto}
       <b>Demo logins:</b><br>
       🏃 Athlete → <b>arjun@athletix.ai</b> / pass: <b>1234</b><br>
       🧑‍🏫 Coach → <b>coach@athletix.ai</b> / pass: <b>1234</b>
+    </div>
+    <div class="legal-note">
+      By continuing you agree to our
+      <a href="/terms" target="_blank">Terms</a> &amp;
+      <a href="/privacy" target="_blank">Privacy Policy</a>.<br>
+      Under 18? You need a parent&#39;s permission to use AthletixAI.
     </div>
   </div>
 </div>
@@ -1295,6 +1315,10 @@ img,canvas,svg,video{max-width:100%;height:auto}
     <section class="page" id="page-privacy">
       <div class="section-header">
         <div><h2>Privacy Center</h2><p class="subtitle">Your data, your control — consent, download & delete</p></div>
+        <div style="margin-top:8px;">
+          <a href="/privacy" target="_blank" class="btn-sm" style="text-decoration:none;">📄 Privacy Policy</a>
+          <a href="/terms" target="_blank" class="btn-sm" style="text-decoration:none;">📜 Terms of Service</a>
+        </div>
       </div>
       <div class="charts-row">
         <div class="card">
@@ -3469,18 +3493,34 @@ window.addEventListener('beforeinstallprompt', function(e){
   var b=byId('installBtn'); if(b) b.style.display='block';
 });
 function installApp(){
-  if(!deferredPrompt){ showToast('Your browser is not offering the install option right now.'); return; }
+  if(!deferredPrompt){
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    showToast(isIOS
+      ? '\ud83d\udcf2 On iPhone: tap Share \u2192 "Add to Home Screen"'
+      : 'Already installed, or your browser is not offering it right now.');
+    return;
+  }
   deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(c){
+    if(c.outcome === 'accepted'){ fireConfetti(60); }
+    deferredPrompt = null;
+    var b=byId('installBtn'); if(b) b.style.display='none';
+  });
 }
-(function pwaManifest(){
-  try{
-    var man={name:'AthletixAI',short_name:'AthletixAI',start_url:'.',display:'standalone',background_color:'#070707',theme_color:'#FF2B2B',
-      icons:[{src:'https://api.qrserver.com/v1/create-qr-code/?size=192x192&data=AthletixAI',sizes:'192x192',type:'image/png'}]};
-    var blob=new Blob([JSON.stringify(man)],{type:'application/json'});
-    var l=document.createElement('link'); l.rel='manifest'; l.href=URL.createObjectURL(blob);
-    document.head.appendChild(l);
-  }catch(e){}
-})();
+/* Register the service worker — this is what makes the app installable
+   and lets it open offline once it has been visited. */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/sw.js', {scope:'/'})
+      .then(function(){ console.info('AthletixAI: service worker registered'); })
+      .catch(function(err){ console.warn('AthletixAI: SW registration failed', err); });
+  });
+}
+/* Already installed? Hide the install button. */
+window.addEventListener('appinstalled', function(){
+  var b=byId('installBtn'); if(b) b.style.display='none';
+  showToast('\u2705 AthletixAI installed!');
+});
 
 /* ═══════════════ BOOT ═══════════════ */
 window.addEventListener('load', function(){

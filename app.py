@@ -52,6 +52,7 @@ from email.mime.text import MIMEText
 from functools import wraps
 
 from flask import (Flask, g, jsonify, make_response, render_template,
+                   send_from_directory,
                    request, session)
 
 # Password hashing: bcrypt preferred (project requirement), werkzeug fallback
@@ -567,6 +568,35 @@ def ensure_csrf():
 def home():
     ensure_csrf()
     return render_template("index.html")
+
+
+@app.get("/privacy")
+def privacy_page():
+    """Public privacy policy (DPDP-aligned)."""
+    return render_template("privacy.html")
+
+
+@app.get("/terms")
+def terms_page():
+    """Public terms of service."""
+    return render_template("terms.html")
+
+
+@app.get("/manifest.json")
+def manifest():
+    """PWA manifest served from root so the app is installable."""
+    return send_from_directory("static", "manifest.json",
+                               mimetype="application/manifest+json")
+
+
+@app.get("/sw.js")
+def service_worker():
+    """Service worker must be served from root to control the whole scope."""
+    resp = make_response(send_from_directory("static", "sw.js",
+                                             mimetype="application/javascript"))
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
 
 
 @app.get("/api/public/stats")
