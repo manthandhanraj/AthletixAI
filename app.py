@@ -25,18 +25,39 @@ import os
 # ── Load a local .env file (KEY=VALUE per line) so email/secret settings
 #    persist without typing them in the terminal each run. ──
 def _load_dotenv():
+    """Load a .env file sitting next to this script into os.environ.
+
+    Deliberately forgiving, because .env files get created by hand on Windows:
+    utf-8-sig strips the byte-order mark Notepad adds (without it the first
+    key silently becomes "\ufeffOWNER_EMAIL" and is ignored), stray BOM
+    characters are removed from every key, an optional "export " prefix is
+    accepted, and surrounding quotes are dropped.
+    """
     try:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line or line.startswith("#") or "=" not in line:
-                        continue
-                    k, v = line.split("=", 1)
-                    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-    except Exception:
-        pass
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(here, ".env")
+        if not os.path.exists(path):
+            # Windows hides extensions, so ".env" is often saved as ".env.txt"
+            alt = path + ".txt"
+            if os.path.exists(alt):
+                path = alt
+                print("[WARN] Using .env.txt - rename it to .env")
+            else:
+                return
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            for line in fh:
+                line = line.strip().lstrip("\ufeff")
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip().lstrip("\ufeff")
+                if k.lower().startswith("export "):
+                    k = k[7:].strip()
+                v = v.strip().strip('"').strip("'")
+                if k:
+                    os.environ.setdefault(k, v)
+    except Exception as exc:
+        print("[WARN] Could not read .env: %s" % exc)
 
 
 _load_dotenv()
@@ -1295,8 +1316,10 @@ def ensure_owner_account():
     password is configured, nothing happens and no owner exists — a safe default.
     """
     if not OWNER_PASSWORD:
-        print("[INFO] OWNER_PASSWORD not set - owner account unavailable.")
+        print("[INFO] OWNER_PASSWORD not set - owner account unavailable. "
+              "Add OWNER_EMAIL and OWNER_PASSWORD to your .env file.")
         return
+    print("[INFO] Owner login enabled for: %s" % OWNER_EMAIL)
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     try:

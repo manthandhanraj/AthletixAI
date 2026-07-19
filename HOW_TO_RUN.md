@@ -20,7 +20,10 @@ The frontend now talks to the Flask backend + SQLite database:
 ## Logins
 - Athlete : arjun@athletix.ai  / 1234
 - Coach   : coach@athletix.ai  / 1234
-- Owner   : owner@athletix.ai  / archita.1905   (secret, full platform data)
+- Owner   : the admin account is configured through environment variables
+            (OWNER_EMAIL and OWNER_PASSWORD in your .env file), so no admin
+            credentials live in this repository. Without them, no owner
+            account is created at all.
 - Or create a new account (verify with the code printed in the terminal).
 
 ## Offline safety
