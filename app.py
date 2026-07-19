@@ -1276,16 +1276,9 @@ def seed():
         "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
         "created_at) VALUES ('admin',?,?,?,?,1,?)",
         ("Platform Admin", "admin@athletix.ai", "", pw, now_iso()))
-    # Secret owner account — created only if OWNER_PASSWORD is configured.
-    # Nothing sensitive lives in this file.
-    if OWNER_PASSWORD:
-        db.execute(
-            "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
-            "created_at) VALUES ('owner',?,?,?,?,1,?)",
-            ("Platform Owner", OWNER_EMAIL, "",
-             hash_password(OWNER_PASSWORD), now_iso()))
-    else:
-        print("[INFO] OWNER_PASSWORD not set - owner account was not created.")
+    # NOTE: the owner account is NOT created here. seed() only runs on an
+    # empty database, but the owner may be configured at any time — see
+    # ensure_owner_account() below, which runs on every start.
     db.commit()
     db.close()
     print("Database seeded with demo accounts (password: 1234).")
@@ -1293,7 +1286,45 @@ def seed():
 
 # Seed the database at import time so it also runs under a production
 # server (gunicorn), not just when this file is executed directly.
+
+def ensure_owner_account():
+    """Create or update the owner account from the environment.
+
+    Runs on every start, independently of seed(): seed() only touches an empty
+    database, but OWNER_PASSWORD can be set (or changed) at any time. If no
+    password is configured, nothing happens and no owner exists — a safe default.
+    """
+    if not OWNER_PASSWORD:
+        print("[INFO] OWNER_PASSWORD not set - owner account unavailable.")
+        return
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    try:
+        db.executescript(SCHEMA)
+        row = db.execute("SELECT id, pass_hash FROM users WHERE email = ?",
+                         (OWNER_EMAIL,)).fetchone()
+        if row is None:
+            # Remove any older owner account left on a different email.
+            db.execute("DELETE FROM users WHERE role = 'owner'")
+            db.execute(
+                "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
+                "created_at) VALUES ('owner',?,?,?,?,1,?)",
+                ("Platform Owner", OWNER_EMAIL, "",
+                 hash_password(OWNER_PASSWORD), now_iso()))
+            print("[INFO] Owner account created for %s" % OWNER_EMAIL)
+        elif not check_password(OWNER_PASSWORD, row["pass_hash"]):
+            # Password changed in the environment -> update it.
+            db.execute("UPDATE users SET pass_hash = ?, role = 'owner', "
+                       "verified = 1 WHERE id = ?",
+                       (hash_password(OWNER_PASSWORD), row["id"]))
+            print("[INFO] Owner password updated for %s" % OWNER_EMAIL)
+        db.commit()
+    finally:
+        db.close()
+
+
 seed()
+ensure_owner_account()
 
 
 if __name__ == "__main__":
