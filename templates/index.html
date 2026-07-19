@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0C0D10">
-<meta name="description" content="AI-powered sports talent assessment. Record a video, get an instant performance report across 48 sports.">
+<meta name="description" content="AI-powered sports talent assessment. Record a video, get an instant performance report across 35 sports.">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/static/icon-192.png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -878,9 +878,9 @@ img,canvas,svg,video{max-width:100%;height:auto}
         <div class="imp"><b id="imp1">0</b><small>Athletes</small></div>
         <div class="imp"><b id="imp2">0</b><small>AI Reports</small></div>
         <div class="imp"><b id="imp3">0</b><small>Coaches</small></div>
-        <div class="imp"><b id="imp4">48</b><small>Sports</small></div>
+        <div class="imp"><b id="imp4">35</b><small>Sports</small></div>
       </div>
-      <div class="trust-strip">Camera-only &middot; No hardware needed<br><span>📹 33-point pose AI</span><span>🏅 48 sports</span><span>🔒 Video stays on your phone</span><span>💸 Free for athletes</span></div>
+      <div class="trust-strip">Camera-only &middot; No hardware needed<br><span>📹 33-point pose AI</span><span>🏅 35 sports</span><span>🔒 Video stays on your phone</span><span>💸 Free for athletes</span></div>
     </div>
 
     <div class="role-switch">
@@ -1442,7 +1442,7 @@ img,canvas,svg,video{max-width:100%;height:auto}
 <script>
 'use strict';
 /* ═══════════════ DATA LAYER (localStorage + memory fallback) ═══════════════ */
-/* ══════════ 48-SPORT AI REGISTRY — per-sport trained models ══════════ */
+/* ══════════ SPORT AI REGISTRY — camera-analysable sports only ══════════ */
 var SPORT_CATS = {
  team:{g:'\u26bd Team Sports',labels:['Sprint Speed','Change of Direction','Physical Power','Match Endurance','Skill Technique'],inj:'ankles, knees & hamstrings',focus:['speed','stamina'],
    checks:['sprint bursts & first-step acceleration','cutting angles & direction changes','duel / contact body strength','skill execution quality under fatigue'],
@@ -1485,20 +1485,17 @@ var SPORT_CATS = {
    drills:{speed:'event-specific sprint / speed sets',agility:'adaptive movement pattern drills',strength:'functional strength circuit',stamina:'progressive endurance blocks',technique:'filmed technique reps with coach feedback'} }
 };
 var SPORTS_DB = {
+ // Only sports our camera + pose engine can genuinely analyse:
+ // land-based, full-body, dynamic movement clearly visible to a phone camera.
  'Football':{i:'\u26bd',c:'team'},'Basketball':{i:'🏀',c:'team'},'Volleyball':{i:'🏐',c:'team'},'Rugby':{i:'🏉',c:'team'},
  'Hockey (Field)':{i:'🏑',c:'team'},'Handball':{i:'🤾',c:'team'},'Lacrosse':{i:'🥍',c:'team'},'Sepak Takraw':{i:'🦶',c:'team'},'Kabaddi':{i:'🤼',c:'team'},
  'Cricket':{i:'🏏',c:'bat'},'Baseball':{i:'\u26be',c:'bat'},'Softball':{i:'🥎',c:'bat'},
  'Tennis':{i:'🎾',c:'racquet'},'Badminton':{i:'🏸',c:'racquet'},'Table Tennis':{i:'🏓',c:'racquet'},
  'Boxing':{i:'🥊',c:'combat'},'Wrestling':{i:'🤼',c:'combat'},'MMA':{i:'🥋',c:'combat'},'Judo':{i:'🥋',c:'combat'},'Karate':{i:'🥋',c:'combat'},'Taekwondo':{i:'🥋',c:'combat'},'Fencing':{i:'🤺',c:'combat'},
- 'Athletics':{i:'🏃',c:'endurance'},'Cycling':{i:'🚴',c:'endurance'},'Triathlon':{i:'🏊',c:'endurance'},
- 'Swimming':{i:'🏊',c:'water'},'Diving':{i:'🤿',c:'water'},'Surfing':{i:'🏄',c:'water'},'Rowing':{i:'🚣',c:'water'},'Canoeing/Kayaking':{i:'🛶',c:'water'},
- 'Ice Hockey':{i:'🏒',c:'winter'},'Skiing':{i:'\u26f7\ufe0f',c:'winter'},'Skating':{i:'\u26f8\ufe0f',c:'winter'},
+ 'Athletics':{i:'🏃',c:'endurance'},'Cycling':{i:'🚴',c:'endurance'},
  'Archery':{i:'🏹',c:'precision'},'Shooting':{i:'🎯',c:'precision'},'Golf':{i:'\u26f3',c:'precision'},'Snooker/Pool':{i:'🎱',c:'precision'},'Billiards':{i:'🎱',c:'precision'},
  'Weightlifting':{i:'🏋\ufe0f',c:'lift'},
- 'Gymnastics':{i:'🤸',c:'artistic'},'Parkour':{i:'🏃',c:'artistic'},'Climbing':{i:'🧗',c:'artistic'},'Skateboarding':{i:'🛹',c:'artistic'},'Breakdancing':{i:'🕺',c:'artistic'},
- 'Equestrian':{i:'🐎',c:'ride'},'Polo':{i:'🐎',c:'ride'},
- 'Chess':{i:'\u265f\ufe0f',c:'mind'},
- 'Para Sports':{i:'\u267f',c:'para'}
+ 'Gymnastics':{i:'🤸',c:'artistic'},'Parkour':{i:'🏃',c:'artistic'},'Climbing':{i:'🧗',c:'artistic'},'Skateboarding':{i:'🛹',c:'artistic'},'Breakdancing':{i:'🕺',c:'artistic'}
 };
 const SPORTS = Object.keys(SPORTS_DB);
 function sportCat(s){ var d=SPORTS_DB[s]; return SPORT_CATS[(d&&d.c)||'team']; }
@@ -1525,6 +1522,11 @@ function sportAIBlockHTML(r){
     '<ul style="font-size:13px;color:var(--muted);margin:0 0 10px 18px;line-height:1.8;">'+c.checks.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>'+
     '<p style="font-size:13px;color:var(--muted);margin:6px 0;"><b style="color:var(--gold2);">Key metrics for '+esc(r.sport)+':</b> '+focus+'</p>'+
     '<p style="font-size:13px;color:var(--muted);margin:6px 0;"><b style="color:var(--gold2);">Coach&#39;s drill for your weakest area ('+ML[weakest]+'):</b> '+c.drills[weakest]+'</p>'+
+    '<p style="font-size:12px;color:var(--dim);margin:8px 0 0;">\u2696\ufe0f This report measures general movement quality from camera data. Sport-specific technique judgement still needs a qualified coach.</p>'+
+    '<p style="font-size:12px;color:var(--dim);margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line2);">'+
+      (r.live ? '📹 Source: Live Pose session' : '🎬 Source: uploaded video') +
+      (r.quality ? ' · pose detected in ' + r.quality + '% of sampled frames' : '') +
+      '</p>'+
     '<p style="font-size:12.5px;color:var(--dim);margin:8px 0 0;">🩹 Injury watch for '+esc(r.sport)+': '+c.inj+'. Warm up before and cool down after every session.</p>'+
   '</div>';
 }
@@ -1630,8 +1632,15 @@ if(!DB){ DB = seedDB(); saveDB(); }   // offline fallback data
     if(sess && sess.user){
       CU = sess.user;
       await hydrateFromServer();
-      // auto-resume session on the correct panel
-      if(typeof enterApp === 'function') enterApp(CU);
+      // Resume the session. Kept in its OWN try/catch so a rendering
+      // error can never be mistaken for "the server is down" — that bug
+      // left the app open but blank.
+      try{
+        if(typeof enterApp === 'function') enterApp(CU);
+      }catch(err){
+        console.error('AthletixAI: could not restore session view', err);
+        try{ byId('app').classList.remove('on'); byId('authScreen').style.display=''; }catch(e2){}
+      }
     }
   }catch(e){
     BACKEND.on = false;   // server not running -> stay in offline localStorage mode
@@ -1783,13 +1792,10 @@ async function fpResetPass(){
 
 
 /* ═══════════ SECRET OWNER ACCOUNT ═══════════ */
-var OWNER_EMAIL='owner@athletix.ai', OWNER_PASS='archita.1905';
-function ensureOwner(){
-  var o = DB.users.find(function(x){return x.email===OWNER_EMAIL;});
-  if(!o){ o={id:DB.nextUid++, role:'owner', name:'Platform Owner', email:OWNER_EMAIL, pass:OWNER_PASS}; DB.users.push(o); saveDB(); }
-  else { o.role='owner'; o.pass=OWNER_PASS; }
-  return o;
-}
+/* Owner/admin access is handled ENTIRELY by the server.
+   No admin credentials are stored in this file — the browser simply posts
+   whatever the user typed to /api/auth/login and the backend decides.
+   This is why the repository can safely be public. */
 function activeToday(){
   var today=new Date().toDateString(), ids={};
   DB.reports.forEach(function(r){ if(new Date(r.date).toDateString()===today) ids[r.athleteId]=1; });
@@ -1820,6 +1826,7 @@ function renderODash(){
   for(var i=13;i>=0;i--){ var d=new Date(Date.now()-i*864e5); days.push(d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}));
     counts.push(DB.reports.filter(function(r){return new Date(r.date).toDateString()===d.toDateString();}).length); }
   if(window._ownCh) window._ownCh.destroy();
+  if(typeof Chart==="undefined"){ console.warn("Chart.js not loaded yet"); } else
   window._ownCh=new Chart(byId('ownReports14'),{type:'line',data:{labels:days,datasets:[{data:counts,borderColor:'#C9A24B',backgroundColor:'rgba(201,162,75,.12)',fill:true,tension:.35,pointRadius:3,pointBackgroundColor:'#E4CB86'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false} },scales:{y:{beginAtZero:true,ticks:{color:'#8A8F9B'},grid:{color:'rgba(255,255,255,.06)'} },x:{ticks:{color:'#8A8F9B'},grid:{display:false} } } } });
   // feed
   var feed=[];
@@ -1902,7 +1909,6 @@ async function doLogin(){
     return;
   }
   /* ── offline fallback ── */
-  if(email===OWNER_EMAIL && pass===OWNER_PASS){ var ow=ensureOwner(); DB.session=ow.id; saveDB(); enterApp(ow); return; }
   const u = DB.users.find(function(x){ return x.email.toLowerCase()===email && x.pass===pass; });
   if(!u){ byId('authMsg').textContent = '❌ Wrong email or password!'; return; }
   if(u.role==='owner'){ byId('authMsg').textContent = '❌ Wrong email or password!'; return; }
@@ -2038,7 +2044,9 @@ function showPage(id){
   page.classList.add('active');
   byId('pageTitle').textContent = TITLES[id] || 'AthletixAI';
   byId('sidebar').classList.remove('open');
-  // render content
+  // Render content. Wrapped so that if one panel fails, the rest of the
+  // app (nav, header, other pages) still works instead of going blank.
+  try{
   if(id==='adash') renderADash();
   if(id==='upload') renderUpload();
   if(id==='reports') renderMyReports();
@@ -2058,6 +2066,19 @@ function showPage(id){
   if(id==='oathletes') renderOAthletes();
   if(id==='ocoaches') renderOCoaches();
   if(id==='oactivity') renderOActivity();
+  }catch(err){
+    console.error('AthletixAI: failed to render "'+id+'"', err);
+    var _p = byId('page-'+id);
+    if(_p && !_p.dataset.errShown){
+      _p.dataset.errShown = '1';
+      var _w = document.createElement('div');
+      _w.className = 'card';
+      _w.style.cssText = 'margin:14px 0;padding:16px;border:1px solid rgba(255,90,90,.35);';
+      _w.innerHTML = '<b style="color:#FF8A8A;">This section could not load.</b>'+
+        '<p style="color:var(--dim);font-size:13px;margin-top:6px;">Try refreshing the page. If it keeps happening, check the browser console for details.</p>';
+      _p.appendChild(_w);
+    }
+  }
   if(id==='cprofile') renderCProfile();
   if(id==='recruiter') renderRecruiter();
   if(id==='privacy') renderPrivacy();
@@ -2107,34 +2128,212 @@ function renderUpload(){
   byId('uploadNameLabel').textContent = CU.name;
   byId('videoInfo').textContent = pickedFile ? ('🎬 ' + pickedFile) : '';
 }
+var pickedVideoFile = null;   // the real File object we will analyse
 function videoSelected(inp){
   if(inp.files && inp.files[0]){
     const f = inp.files[0];
+    pickedVideoFile = f;
     pickedFile = f.name + ' (' + (f.size/1048576).toFixed(1) + ' MB)';
     byId('videoInfo').textContent = '🎬 ' + pickedFile;
-    showToast('✅ Video selected!');
+    showToast('✅ Video selected — ready to analyse');
   }
 }
-function startAIAnalysis(){
-  if(!pickedFile){
-    if(!confirm('No video selected. Run the analysis with a demo video?')) return;
+/* ═══════════════════════════════════════════════════════════════
+   REAL VIDEO ANALYSIS
+   Runs the SAME MediaPipe pose model + the SAME biomechanics
+   scoring engine used by Live Pose — but over an uploaded video,
+   frame by frame. If no person is detected, we refuse to fake a
+   report and tell the athlete why.
+   ═══════════════════════════════════════════════════════════════ */
+async function ensurePoseModel(){
+  if(poseLandmarker) return poseLandmarker;
+  const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14');
+  const fileset = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+  poseLandmarker = await vision.PoseLandmarker.createFromOptions(fileset,{
+    baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task', delegate:'GPU'},
+    runningMode:'VIDEO', numPoses:1
+  });
+  window._DrawingUtils = vision.DrawingUtils; window._PoseLM = vision.PoseLandmarker;
+  return poseLandmarker;
+}
+
+/* Analyse an uploaded video file. onProgress(pct, label) is called as we go.
+   Returns {ok:true, m:{...}, frames, detected} or {ok:false, error:'...'} */
+async function analyzeVideoFile(file, onProgress){
+  var url = URL.createObjectURL(file);
+  var vid = document.createElement('video');
+  vid.src = url; vid.muted = true; vid.playsInline = true; vid.preload = 'auto';
+
+  try{
+    await new Promise(function(res, rej){
+      vid.onloadedmetadata = res;
+      vid.onerror = function(){ rej(new Error('Could not read this video file.')); };
+      setTimeout(function(){ rej(new Error('Video took too long to load.')); }, 20000);
+    });
+
+    var dur = vid.duration;
+    if(!isFinite(dur) || dur <= 0) throw new Error('This video appears to be empty or corrupted.');
+    if(dur > 180) throw new Error('Video is too long. Please upload a clip under 3 minutes.');
+
+    await ensurePoseModel();
+    resetBio();                       // reuse the Live Pose accumulator
+
+    // sample ~4 frames per second, capped so long clips stay fast
+    var fps = 4;
+    var total = Math.min(Math.max(Math.floor(dur * fps), 8), 300);
+    var detected = 0, prev = null, ts = 0;
+
+    for(var i = 0; i < total; i++){
+      var t = (i / total) * dur;
+      // seek to this timestamp and wait for the frame to be ready
+      await new Promise(function(res){
+        var done = false;
+        vid.onseeked = function(){ if(!done){ done = true; res(); } };
+        vid.currentTime = Math.min(t, dur - 0.02);
+        setTimeout(function(){ if(!done){ done = true; res(); } }, 900);  // never hang
+      });
+
+      ts += 33;                       // monotonic timestamp MediaPipe requires
+      var out;
+      try{ out = poseLandmarker.detectForVideo(vid, ts); }catch(e){ continue; }
+      if(!out || !out.landmarks || !out.landmarks.length) continue;
+
+      var lm = out.landmarks[0];
+      detected++;
+
+      // ── same feature extraction as Live Pose ──
+      var conf = 0;
+      lm.forEach(function(p){ conf += (p.visibility != null ? p.visibility : 1); });
+      conf = (conf / lm.length) * 100;
+
+      var motion = 0;
+      if(prev){
+        [15,16,27,28].forEach(function(k){
+          if(lm[k] && prev[k]) motion += Math.hypot(lm[k].x - prev[k].x, lm[k].y - prev[k].y);
+        });
+      }
+      prev = lm;
+
+      if(bioAcc){
+        bioAcc.frames++;
+        bioAcc.confSum += conf;
+        if(lm[11] && lm[12] && lm[23] && lm[24]){
+          var sh = Math.abs(lm[11].y - lm[12].y), hp = Math.abs(lm[23].y - lm[24].y);
+          bioAcc.symSum += clamp(100 - (sh + hp) * 220, 0, 100);
+        }
+        var v = motion * 1000;
+        bioAcc.velSum += v; if(v > bioAcc.velPeak) bioAcc.velPeak = v;
+        var ka = jointAngle(lm[24], lm[26], lm[28]);
+        if(ka){ bioAcc.kneeSum += ka; bioAcc.kneeN++; if(ka < bioAcc.kneeMin) bioAcc.kneeMin = ka; }
+        var ea = jointAngle(lm[12], lm[14], lm[16]);
+        if(ea){ bioAcc.elbowSum += ea; bioAcc.elbowN++; }
+        if(lm[24]){ bioAcc.rangeSum += Math.abs(lm[24].y - (bioAcc.lastHipY || lm[24].y)); bioAcc.lastHipY = lm[24].y; }
+        if(lm[28]){
+          var dir = lm[28].y > bioAcc.lastFootY ? 1 : -1;
+          if(dir !== bioAcc.footDir){ bioAcc.steps++; bioAcc.footDir = dir; }
+          bioAcc.lastFootY = lm[28].y;
+        }
+      }
+
+      if(onProgress && i % 3 === 0){
+        onProgress(Math.round((i / total) * 100), 'Analysing frame ' + (i + 1) + ' of ' + total + ' — ' + detected + ' poses found');
+      }
+    }
+
+    // ── honesty checks: refuse to invent a score ──
+    if(detected < 12){
+      return { ok:false, error:'No clear person could be detected in this video. Make sure ONE person\'s full body is visible, the lighting is good, and the camera is steady — then try again.' };
+    }
+    if(!bioAcc || bioAcc.frames < 20){
+      return { ok:false, error:'Not enough movement data could be measured. Please upload a longer, clearer clip where the athlete is actively performing.' };
+    }
+    var ratio = detected / total;
+    if(ratio < 0.4){
+      return { ok:false, error:'The person was only visible in part of the video (' + Math.round(ratio*100) + '% of frames). Please upload a clip where the athlete stays fully in frame.' };
+    }
+    var m = scoreFromBiomechanicsStrict(CU && CU.sport);   // uses ONLY measured video data
+    return { ok:true, m:m, frames:total, detected:detected, quality:Math.round(ratio*100) };
+
+  } finally {
+    URL.revokeObjectURL(url);
+    vid.src = '';
   }
-  if(!navigator.onLine){
-    DB.pending=DB.pending||[]; DB.pending.push({date:new Date().toISOString()}); saveDB();
-    pickedFile=null; byId('videoInput').value='';
-    showToast('📴 Offline — session queued! Internet aate hi report ban jayegi.');
-    updateOfflineUI(); return;
+}
+
+async function startAIAnalysis(){
+  // Mind sports (Chess): pose analysis is meaningless — refuse honestly.
+  if(CU && SPORTS_DB[CU.sport] && SPORTS_DB[CU.sport].c === 'mind'){
+    alert('♟️ Camera analysis is not applicable for ' + CU.sport + '.\n\nMind sports are assessed by decision speed and accuracy, not body movement. A dedicated assessment for mind sports is on our roadmap.');
+    return;
   }
-  const steps = ['Uploading video…','Detecting 17 body keypoints…','Tracking joint angles & velocity…',
-    'Measuring stamina & technique…','Running TensorFlow scoring model…','Comparing with your previous sessions…','Generating report…'];
-  runAiLoader(steps, function(){
-    const rep = generateReport(CU.id);
-    pickedFile = null; byId('videoInput').value = '';
+  if(!pickedVideoFile){
+    showToast('📹 Please select a video first.');
+    return;
+  }
+
+  // show the loader UI (real progress, not a fake timer)
+  var ov = byId('aiLoader'), fill = byId('aiProgressFill'),
+      pctEl = byId('aiProgressPct'), stepEl = byId('aiLoaderStep');
+  ov.classList.add('open');
+  var setP = function(pct, text){
+    pct = Math.max(3, Math.min(100, pct));
+    if(fill) fill.style.width = pct + '%';
+    if(pctEl) pctEl.textContent = Math.floor(pct) + '%';
+    if(text && stepEl) stepEl.textContent = text;
+  };
+  var closeLoader = function(){
+    ov.classList.remove('open');
+    if(fill) fill.style.width = '0';
+    if(pctEl) pctEl.textContent = '0%';
+  };
+  setP(3, 'Loading the AI pose model…');
+
+  try{
+    var res = await analyzeVideoFile(pickedVideoFile, setP);
+
+    if(!res.ok){
+      closeLoader();
+      alert('⚠️ ' + res.error);
+      showToast('❌ Analysis failed — no person detected');
+      return;
+    }
+
+    setP(96, 'Scoring your session…');
+    var rep = reportFromMetrics(CU.id, res.m, false);
+    rep.quality = res.quality;
+
+    closeLoader();
+    pickedVideoFile = null; pickedFile = null;
+    byId('videoInput').value = '';
+    byId('videoInfo').textContent = '';
     fireConfetti(90);
-    showToast('✅ Report ready — check My Reports!');
+    showToast('✅ Analysed ' + res.detected + ' poses — report ready!');
     showPage('reports');
     openReport(rep.id, 'athlete');
-  });
+
+  }catch(err){
+    closeLoader();
+    console.error(err);
+    alert('⚠️ ' + (err.message || 'Could not analyse this video. Please try another clip.'));
+    showToast('❌ Analysis failed');
+  }
+}
+
+/* Build + save a report from metrics that were REALLY measured. */
+function reportFromMetrics(uid, m, live){
+  const u = DB.users.find(function(x){ return x.id===uid; });
+  const rep = {id:DB.nextRid++, athleteId:uid, date:new Date().toISOString(),
+               sport:u.sport, m:m, overall:overallOfM(m), live:!!live};
+  DB.reports.push(rep); saveDB();
+  if(BACKEND.on && CU && uid===CU.id){
+    apiSync('/reports', { m:m, live:!!live }).then(function(res){
+      if(res && res.report){
+        var i = DB.reports.indexOf(rep);
+        if(i>=0) DB.reports[i] = res.report;
+      }
+    });
+  }
+  return rep;
 }
 function generateReport(uid, live){
   const u = DB.users.find(function(x){return x.id===uid;});
@@ -2658,6 +2857,10 @@ function renderLivePose(){
   byId('plmConf').textContent='—'; byId('plmMotion').textContent='—'; byId('plmSym').textContent='—';
 }
 async function startPose(){
+  if(CU && CU.role==='athlete' && SPORTS_DB[CU.sport] && SPORTS_DB[CU.sport].c === 'mind'){
+    alert('♟️ Camera analysis is not applicable for ' + CU.sport + '.\n\nMind sports are assessed by decision speed and accuracy, not body movement.');
+    return;
+  }
   const badge=byId('poseBadge'); badge.textContent='⏳ Loading AI model…';
   byId('voiceBtn'); // noop
   try{
@@ -2772,8 +2975,69 @@ function stopPose(silent){
    Converts accumulated pose data (joint angles, velocity, symmetry,
    cadence, range of motion) into 5 objective metric scores 0-100.
    No randomness — same movement gives the same score. */
-function scoreFromBiomechanics(){
+/* STRICT scorer for uploaded video: uses ONLY the measured bioAcc data.
+   No reading of on-screen live-pose values, no soft defaults. Low effort
+   or slow movement genuinely produces a low score. */
+function scoreFromBiomechanicsStrict(sport){
   const b = bioAcc;
+  const _sd = SPORTS_DB[sport || (CU && CU.sport) || ''];
+  const catKey = (_sd && _sd.c) || 'team';
+  if(!b || b.frames < 20) return null;   // caller already guards this
+
+  const avgConf = b.confSum/b.frames;
+  const avgSym  = b.symSum/b.frames;
+  const avgVel  = b.velSum/b.frames;
+  const peakVel = b.velPeak;
+  const kneeROM = Math.max(0, 180 - b.kneeMin);
+  const avgKnee = b.kneeN? b.kneeSum/b.kneeN : 160;
+  const avgElbow= b.elbowN? b.elbowSum/b.elbowN : 160;
+  const range   = b.rangeSum;
+  const cadence = b.steps / (b.frames/30);
+  const stability = clamp(100 - avgVel*1.6, 0, 100);
+
+  // ── effort gate ──────────────────────────────────────────────
+  // For movement sports, an athlete who barely moves must score low.
+  // We build an "activity" measure and scale the dynamic metrics by it,
+  // so a slow walking clip cannot reach elite numbers.
+  var activity = clamp((peakVel*0.9 + avgVel*0.6 + cadence*10 + range*10), 0, 100);
+  var act = activity/100;                       // 0..1 effort multiplier
+
+  var speed, agility, strength, stamina, technique;
+
+  if(catKey==='precision'){
+    // precision: stability legitimately matters, effort gate is lighter
+    var pAct = clamp(0.55 + act*0.45, 0, 1);
+    speed     = (20 + stability*0.42 + avgConf*0.12) * pAct + 20*pAct;
+    agility   = (18 + avgSym*0.55 + stability*0.12) * pAct + 18*pAct;
+    strength  = (20 + (avgElbow<160?16:4) + avgSym*0.20) * pAct + 18*pAct;
+    stamina   = (20 + Math.min(34, b.frames/8)) * pAct + 20*pAct;
+    technique = (16 + avgSym*0.34 + avgConf*0.26 + stability*0.10) * pAct + 16*pAct;
+  } else {
+    // all movement sports: dynamic metrics scale with real activity
+    speed     = 20 + (peakVel*1.05 + cadence*7) * act;
+    agility   = 20 + (avgSym*0.30 + cadence*7 + avgVel*0.5) * act;
+    strength  = 20 + (kneeROM*0.42 + range*24 + (avgElbow<150?8:0)) * (0.5+act*0.5);
+    stamina   = 18 + (avgVel*0.55 + Math.min(24, b.frames/9)) * act;
+    technique = 18 + (avgSym*0.34 + avgConf*0.22) * (0.4+act*0.6) + (avgKnee>90&&avgKnee<170? 8*act : 0);
+    // category nudges
+    if(catKey==='combat'){ speed += peakVel*0.25*act; strength += peakVel*0.30*act; }
+    else if(catKey==='endurance'){ stamina += avgVel*0.25*act; speed += cadence*3*act; }
+    else if(catKey==='lift'){ strength += kneeROM*0.25; technique += (avgKnee>70&&avgKnee<160?6:0); }
+    else if(catKey==='artistic'){ agility += avgSym*0.18*act; technique += avgSym*0.14; }
+  }
+
+  // low tracking confidence => cap the whole report (blurry/partial video)
+  var confCap = avgConf < 55 ? 78 : (avgConf < 70 ? 90 : 99);
+
+  function fin(x){ return clamp(Math.round(x), 30, confCap); }
+  return { speed:fin(speed), agility:fin(agility), strength:fin(strength),
+           stamina:fin(stamina), technique:fin(technique) };
+}
+
+function scoreFromBiomechanics(sport){
+  const b = bioAcc;
+  const _sd = SPORTS_DB[sport || (CU && CU.sport) || ''];
+  const catKey = (_sd && _sd.c) || 'team';
   // graceful fallback if too little data was captured
   if(!b || b.frames < 15){
     const c=parseInt(byId('plmConf').textContent)||70, mo=parseInt(byId('plmMotion').textContent)||20, sy=parseInt(byId('plmSym').textContent)||75;
@@ -2791,16 +3055,56 @@ function scoreFromBiomechanics(){
   const range   = b.rangeSum;                         // total vertical travel = effort
   const cadence = b.steps / (b.frames/30);            // steps per ~second
 
-  // SPEED  = peak velocity + cadence
-  let speed = 42 + peakVel*0.85 + cadence*7;
-  // AGILITY = symmetry + direction changes (cadence) + mean velocity
-  let agility = 34 + avgSym*0.42 + cadence*6 + avgVel*0.3;
-  // STRENGTH = knee flexion depth + range of motion + posture (elbow drive)
-  let strength = 40 + kneeROM*0.45 + range*22 + (avgElbow<150?8:0);
-  // STAMINA = sustained motion over the whole session (frames * avg velocity)
-  let stamina = 40 + avgVel*0.45 + Math.min(20, b.frames/12);
-  // TECHNIQUE = symmetry + tracking confidence + controlled knee angle
-  let technique = 30 + avgSym*0.4 + avgConf*0.22 + (avgKnee>90&&avgKnee<170?10:0);
+  // ── CATEGORY-SPECIFIC SCORING ──
+  // Different sport families reward different qualities. A steady archer
+  // must NOT be punished for standing still; a lifter's depth matters more
+  // than cadence. catKey comes from the athlete's sport.
+  const stability = clamp(100 - avgVel*1.6, 0, 100);   // stillness = control
+  let speed, agility, strength, stamina, technique;
+
+  if(catKey==='precision'){
+    // Archery / Shooting / Golf / Snooker: stability & repeatability win
+    speed     = 44 + stability*0.30 + avgConf*0.14;              // execution control
+    agility   = 36 + avgSym*0.50 + stability*0.10;               // stability control
+    strength  = 42 + (avgElbow<160?14:4) + avgSym*0.22;          // hold strength
+    stamina   = 42 + Math.min(30, b.frames/9) + avgConf*0.10;    // focus endurance
+    technique = 30 + avgSym*0.36 + avgConf*0.30 + stability*0.08;
+  } else if(catKey==='endurance'){
+    // Athletics / Cycling / Triathlon: sustained output over the session
+    speed     = 40 + avgVel*0.55 + cadence*6 + peakVel*0.25;
+    agility   = 36 + cadence*7 + avgSym*0.30;
+    strength  = 40 + kneeROM*0.35 + range*18;
+    stamina   = 36 + avgVel*0.62 + Math.min(26, b.frames/8);
+    technique = 32 + avgSym*0.42 + avgConf*0.20 + (cadence>1?8:0);
+  } else if(catKey==='combat'){
+    // Boxing / Wrestling / MMA: explosive bursts + reactions
+    speed     = 40 + peakVel*1.05 + cadence*4;
+    agility   = 34 + avgSym*0.34 + peakVel*0.40 + cadence*5;
+    strength  = 38 + peakVel*0.50 + kneeROM*0.35 + (avgElbow<150?10:0);
+    stamina   = 40 + avgVel*0.50 + Math.min(20, b.frames/11);
+    technique = 32 + avgSym*0.38 + avgConf*0.22 + (avgKnee>90&&avgKnee<170?9:0);
+  } else if(catKey==='lift'){
+    // Weightlifting: depth, range and controlled positions rule
+    speed     = 42 + peakVel*0.65 + kneeROM*0.12;                // bar speed proxy
+    agility   = 38 + (avgKnee<120?16:6) + avgSym*0.26;           // mobility
+    strength  = 34 + kneeROM*0.60 + range*26;
+    stamina   = 42 + Math.min(24, b.frames/10) + avgVel*0.25;    // work capacity
+    technique = 30 + avgSym*0.34 + avgConf*0.24 + (avgKnee>70&&avgKnee<160?12:0);
+  } else if(catKey==='artistic'){
+    // Gymnastics / Parkour / Skateboarding: flow, balance, body control
+    speed     = 42 + peakVel*0.75 + cadence*5;
+    agility   = 30 + avgSym*0.52 + peakVel*0.28;                 // flow & balance
+    strength  = 38 + kneeROM*0.40 + range*22 + (avgElbow<150?8:0);
+    stamina   = 42 + avgVel*0.40 + Math.min(20, b.frames/11);
+    technique = 28 + avgSym*0.46 + avgConf*0.24;
+  } else {
+    // team / bat / racquet / water / winter / ride / para — balanced dynamic profile
+    speed     = 42 + peakVel*0.85 + cadence*7;
+    agility   = 34 + avgSym*0.42 + cadence*6 + avgVel*0.3;
+    strength  = 40 + kneeROM*0.45 + range*22 + (avgElbow<150?8:0);
+    stamina   = 40 + avgVel*0.45 + Math.min(20, b.frames/12);
+    technique = 30 + avgSym*0.4 + avgConf*0.22 + (avgKnee>90&&avgKnee<170?10:0);
+  }
 
   return {
     speed:clamp(Math.round(speed),40,99), agility:clamp(Math.round(agility),40,99),
@@ -2809,8 +3113,13 @@ function scoreFromBiomechanics(){
   };
 }
 function capturePoseReport(){
+  // Mind sports (Chess): pose analysis is meaningless — refuse honestly.
+  if(CU && SPORTS_DB[CU.sport] && SPORTS_DB[CU.sport].c === 'mind'){
+    alert('♟️ Camera analysis is not applicable for ' + CU.sport + '.\n\nMind sports are assessed by decision speed and accuracy, not body movement. A dedicated assessment for mind sports is on our roadmap.');
+    return;
+  }
   // build a report influenced by live confidence/motion/symmetry
-  const m = scoreFromBiomechanics();
+  const m = scoreFromBiomechanics(CU && CU.sport);
   const rep={id:DB.nextRid++, athleteId:CU.id, date:new Date().toISOString(), sport:CU.sport, m:m, overall:overallOfM(m), live:true};
   DB.reports.push(rep); saveDB();
   if(BACKEND.on){ apiSync('/reports', { m:m, live:true }).then(function(res){ if(res&&res.report){ var i=DB.reports.indexOf(rep); if(i>=0) DB.reports[i]=res.report; } }); }
@@ -3466,7 +3775,7 @@ async function animateImpact(){
     var s = await (await fetch('/api/public/stats')).json();
     if(s && s.ok){ a = s.athletes; r = s.reports; c = s.coaches; }
   }catch(e){ /* offline: fall back to local counts */ }
-  var targets=[[byId('imp1'),a,''],[byId('imp2'),r,''],[byId('imp3'),c,''],[byId('imp4'),48,'']];
+  var targets=[[byId('imp1'),a,''],[byId('imp2'),r,''],[byId('imp3'),c,''],[byId('imp4'),SPORTS.length,'']];
   targets.forEach(function(t){
     if(!t[0]) return;
     var cur=0, step=Math.max(1,Math.ceil(t[1]/38));

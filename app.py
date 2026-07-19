@@ -112,6 +112,14 @@ SMTP_PASS = os.environ.get("SMTP_PASS", "")
 MAIL_FROM = os.environ.get("MAIL_FROM", "AthletixAI <no-reply@athletix.ai>")
 EMAIL_DEV_MODE = not SMTP_HOST  # no SMTP configured -> dev mode
 
+# ── Owner / admin account ───────────────────────────────────────────────
+# Credentials come from the environment, never from source control.
+# Set OWNER_EMAIL and OWNER_PASSWORD in your .env (locally) or in your
+# host's environment settings (in production). If OWNER_PASSWORD is not
+# set, no owner account is created at all — the panel simply stays closed.
+OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "owner@athletix.ai").strip().lower()
+OWNER_PASSWORD = os.environ.get("OWNER_PASSWORD", "").strip()
+
 # In production (HTTPS host), harden the session cookie
 if os.environ.get("FLASK_DEBUG", "1") == "0":
     app.config.update(SESSION_COOKIE_SECURE=True)
@@ -616,7 +624,7 @@ def public_stats():
         "SELECT COUNT(*) FROM reports WHERE live=1").fetchone()[0]
     return jsonify(ok=True, athletes=athletes, coaches=coaches,
                    reports=reports, live_sessions=sessions_live,
-                   sports=48)
+                   sports=35)
 
 
 @app.get("/api/csrf")
@@ -1268,12 +1276,16 @@ def seed():
         "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
         "created_at) VALUES ('admin',?,?,?,?,1,?)",
         ("Platform Admin", "admin@athletix.ai", "", pw, now_iso()))
-    # Secret owner account (hidden from all lists; login only with these creds)
-    db.execute(
-        "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
-        "created_at) VALUES ('owner',?,?,?,?,1,?)",
-        ("Platform Owner", "owner@athletix.ai", "",
-         hash_password("archita.1905"), now_iso()))
+    # Secret owner account — created only if OWNER_PASSWORD is configured.
+    # Nothing sensitive lives in this file.
+    if OWNER_PASSWORD:
+        db.execute(
+            "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
+            "created_at) VALUES ('owner',?,?,?,?,1,?)",
+            ("Platform Owner", OWNER_EMAIL, "",
+             hash_password(OWNER_PASSWORD), now_iso()))
+    else:
+        print("[INFO] OWNER_PASSWORD not set - owner account was not created.")
     db.commit()
     db.close()
     print("Database seeded with demo accounts (password: 1234).")
