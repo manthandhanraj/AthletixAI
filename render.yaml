@@ -4,16 +4,46 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 3 --threads 8 --worker-class gthread --timeout 120 --keep-alive 5
     envVars:
+      # Production posture: no debugger, Secure cookies, HSTS, and the
+      # fail-fast configuration checks in startup_checks().
       - key: FLASK_DEBUG
         value: "0"
+      # Signs session cookies. MUST be stable across all workers — the app
+      # refuses to start in production without it.
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHON_VERSION
         value: "3.12.0"
+      # Persistent disk, so the database survives restarts and redeploys.
       - key: DB_PATH
         value: /var/data/athletixai.db
+
+      # ── Set these in the Render dashboard (sync: false = not in git) ──
+      # Without SMTP the app runs in email dev mode, which production
+      # force-disables — meaning users could not verify their address or
+      # reset a password. Configure these before launch.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Owner account. Never creatable through public signup; must satisfy
+      # the password policy or it is refused at startup.
+      - key: OWNER_EMAIL
+        sync: false
+      - key: OWNER_PASSWORD
+        sync: false
+      # Render terminates TLS in front of the app, so X-Forwarded-For is
+      # trustworthy here and rate limiting should key on the real client IP.
+      - key: TRUST_PROXY
+        value: "1"
     disk:
       name: athletix-data
       mountPath: /var/data

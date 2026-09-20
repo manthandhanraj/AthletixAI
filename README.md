@@ -151,8 +151,9 @@ from the Privacy Center. See `/privacy` and `/terms` on the live app.
 | Charts | Chart.js · **PDF** jsPDF | Reports and exports |
 | Hosting | Render (gunicorn) | Auto-deploy on push, free TLS |
 
-**Scale:** 1,295 lines of backend · 3,830 lines of frontend · 31 REST endpoints ·
-12 database tables · 159 JS functions · installable PWA with offline support.
+**Scale:** 6,520 lines of backend across 57 modules · 3,960 lines of frontend ·
+42 REST endpoints (each served at both `/api/...` and `/api/v1/...`) ·
+12 database tables · 510 backend tests · installable PWA with offline support.
 
 ---
 
@@ -167,26 +168,38 @@ python app.py
 
 Open http://127.0.0.1:5000
 
-**Demo accounts** (seeded automatically on first run)
+**Demo accounts** — seeded only into an *empty* database, and never in
+production (the app refuses to start with `SEED_DEMO=1` there, because these
+accounts share a known password).
 
 | Role | Email | Password |
 |---|---|---|
-| Athlete | `arjun@athletix.ai` | `1234` |
-| Coach | `coach@athletix.ai` | `1234` |
+| Athlete | `arjun@athletix.ai` | `AthletixDemo!2026` |
+| Coach | `coach@athletix.ai` | `AthletixDemo!2026` |
 
-Or create your own account — signup works immediately.
+Override with `SEED_PASSWORD`, or disable seeding with `SEED_DEMO=0`.
+
+Or create your own account. Signup creates the account **unverified**: you
+must enter the 6-digit code emailed to you (printed to the console while
+email is in dev mode) before you can log in. Public signup can only ever
+create `athlete` or `coach` accounts — admin and owner are provisioned from
+the environment.
 
 **Optional environment variables** (create a `.env` file)
 
 ```
-SECRET_KEY=<random string>
+SECRET_KEY=<random string>        # REQUIRED in production; app refuses to start without it
+FLASK_DEBUG=0                     # production posture: Secure cookies, HSTS, no debugger
 OWNER_EMAIL=<admin email>
-OWNER_PASSWORD=<admin password>
+OWNER_PASSWORD=<admin password>   # must meet the password policy
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USER=<your email>
 SMTP_PASS=<app password>
 ```
+
+See `.env.example` for the fully annotated list, and `SECURITY_AUDIT.md` for
+the security review this codebase was hardened against.
 
 Without SMTP configured the app runs in dev mode and prints verification codes to the
 terminal, so the full flow is testable offline.
@@ -208,7 +221,17 @@ Stating these plainly, because a tool that hides its limits can't be trusted:
 4. **2D pose has limits.** Depth is unreliable and camera angle affects results, which is
    why the engine leans on symmetry and relative change rather than absolute distances.
 5. **SQLite is single-writer.** Fine for hundreds of concurrent users; Postgres migration
-   is planned before that becomes a ceiling.
+   is planned before that becomes a ceiling. The audit, schema mapping and migration plan
+   are written up in `POSTGRESQL_READINESS.md` — the code is prepared for the move, the
+   move has not been made.
+6. **Scores are computed in the browser and the server says so.** The pose pipeline runs
+   on-device, so submitted scores are untrusted input: the server re-derives the overall
+   itself and records on every report which provider produced it and that it is not
+   server-verified.
+7. **Background e-mail is in-process.** Transactional mail is sent off the request path
+   (see `athletix/jobs/`), but the queue lives in the web process: a deploy or crash can
+   lose queued mail, and there is no retry. A durable broker is the next step if mail
+   volume justifies it.
 
 ---
 

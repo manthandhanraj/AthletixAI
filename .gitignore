@@ -1,2 +1,19 @@
+# ── Secrets / local config ──────────────────────────────────
 .env
+.env.*
+!.env.example
+.dev_secret_key
+
+# ── Local database (contains real user data + password hashes) ──
 athletixai.db
+*.db
+*.db-wal
+*.db-shm
+
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/

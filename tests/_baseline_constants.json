@@ -1,0 +1,261 @@
+{
+ "ALLOWED_CONSENTS": [
+  "analytics",
+  "contact",
+  "leaderboard",
+  "marketing",
+  "research"
+ ],
+ "ALL_ROLES": [
+  "athlete",
+  "coach",
+  "admin",
+  "owner"
+ ],
+ "BASE_DIR": "C:\\local disk d\\VS CODE\\AtheletixAI",
+ "BCRYPT_ROUNDS": 4,
+ "CSP": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://api.qrserver.com; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://storage.googleapis.com; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
+ "CSP_HEADER": "Content-Security-Policy",
+ "DB_PATH": "C:/Users/MANTHAN/AppData/Local/Temp/claude/C--local-disk-d-VS-CODE-AtheletixAI/3acd1adc-ce41-4222-9868-48b7470682fd/scratchpad/snap.db",
+ "DEBUG_MODE": false,
+ "DEV_CODES": true,
+ "EMAIL_DEV_MODE": true,
+ "EMAIL_RE": "re:^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
+ "IS_PRODUCTION": false,
+ "LOCATIONS": [
+  "Urban",
+  "Rural"
+ ],
+ "MAIL_FROM": "AthletixAI <athletixai0919@gmail.com>",
+ "MAX_JSON_BYTES": 1048576,
+ "METRICS": [
+  "speed",
+  "agility",
+  "strength",
+  "stamina",
+  "technique"
+ ],
+ "OWNER_EMAIL": "owner@snap.test",
+ "OWNER_PASSWORD": "SnapOwner!2026",
+ "PASSWORD_MAX": 72,
+ "PASSWORD_MIN": 8,
+ "PHONE_RE": "re:^[0-9+\\-() ]{7,20}$",
+ "PHOTO_MAGIC": [
+  "\u0089PNG\r\n\u001a\n",
+  "\u00ff\u00d8\u00ff",
+  "GIF87a",
+  "GIF89a",
+  "RIFF"
+ ],
+ "PHOTO_MIMES": [
+  "png",
+  "jpeg",
+  "jpg",
+  "gif",
+  "webp"
+ ],
+ "PRIVILEGED_ROLES": [
+  "admin",
+  "owner"
+ ],
+ "PUBLIC_ROLES": [
+  "athlete",
+  "coach"
+ ],
+ "RATE_RULES": {
+  "email_change": [
+   5,
+   15,
+   3600
+  ],
+  "export": [
+   10,
+   30,
+   3600
+  ],
+  "forgot": [
+   5,
+   15,
+   3600
+  ],
+  "login": [
+   8,
+   40,
+   600
+  ],
+  "message": [
+   30,
+   90,
+   3600
+  ],
+  "notify": [
+   30,
+   90,
+   3600
+  ],
+  "password": [
+   10,
+   30,
+   900
+  ],
+  "photo": [
+   20,
+   60,
+   3600
+  ],
+  "rating": [
+   20,
+   60,
+   3600
+  ],
+  "report": [
+   60,
+   180,
+   3600
+  ],
+  "resend": [
+   5,
+   15,
+   3600
+  ],
+  "reset": [
+   10,
+   30,
+   900
+  ],
+  "signup": [
+   3,
+   8,
+   3600
+  ],
+  "verify": [
+   10,
+   40,
+   900
+  ]
+ },
+ "RESEND_COOLDOWN_SECONDS": 60,
+ "SAFE_METHODS": [
+  "GET",
+  "HEAD",
+  "OPTIONS"
+ ],
+ "SCHEMA": "\nCREATE TABLE IF NOT EXISTS users (\n    id            INTEGER PRIMARY KEY AUTOINCREMENT,\n    role          TEXT    NOT NULL CHECK (role IN ('athlete','coach','admin','owner')),\n    name          TEXT    NOT NULL,\n    email         TEXT    NOT NULL UNIQUE COLLATE NOCASE,\n    phone         TEXT,\n    pass_hash     TEXT    NOT NULL,\n    photo         TEXT,                       -- base64 data URL (optional)\n    verified      INTEGER NOT NULL DEFAULT 0,\n    created_at    TEXT    NOT NULL,\n    last_login    TEXT,\n    -- Bumped whenever every existing session for this user must stop being\n    -- valid: password reset, password change, e-mail change, role change,\n    -- explicit \"log out everywhere\". Cookies carry the epoch they were\n    -- minted with; current_user() rejects any cookie that is behind.\n    sess_epoch    INTEGER NOT NULL DEFAULT 0\n);\n\nCREATE TABLE IF NOT EXISTS athlete_profiles (\n    user_id   INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,\n    sport     TEXT,\n    age       INTEGER,\n    location  TEXT DEFAULT 'Urban'\n);\n\nCREATE TABLE IF NOT EXISTS coach_profiles (\n    user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,\n    specialty    TEXT DEFAULT '',\n    bio          TEXT DEFAULT '',\n    experience   INTEGER DEFAULT 0,\n    city         TEXT DEFAULT '',\n    achievements TEXT DEFAULT '[]'            -- JSON array of strings\n);\n\nCREATE TABLE IF NOT EXISTS reports (\n    id         INTEGER PRIMARY KEY AUTOINCREMENT,\n    athlete_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n    date       TEXT    NOT NULL,\n    sport      TEXT,\n    speed      INTEGER, agility INTEGER, strength INTEGER,\n    stamina    INTEGER, technique INTEGER,\n    overall    REAL,\n    live       INTEGER DEFAULT 0\n);\nCREATE INDEX IF NOT EXISTS idx_reports_athlete\n    ON reports(athlete_id, date);\n\nCREATE TABLE IF NOT EXISTS ai_results (\n    report_id  INTEGER PRIMARY KEY REFERENCES reports(id) ON DELETE CASCADE,\n    potential  TEXT, medal_prob INTEGER, risk TEXT, best_fit TEXT\n);\n\nCREATE TABLE IF NOT EXISTS videos (\n    id         INTEGER PRIMARY KEY AUTOINCREMENT,\n    report_id  INTEGER REFERENCES reports(id) ON DELETE CASCADE,\n    athlete_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n    filename   TEXT, size_mb REAL, source TEXT, uploaded_at TEXT NOT NULL\n);\n\nCREATE TABLE IF NOT EXISTS messages (\n    id      INTEGER PRIMARY KEY AUTOINCREMENT,\n    to_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n    from_id INTEGER REFERENCES users(id) ON DELETE SET NULL,\n    from_nm TEXT NOT NULL,\n    body    TEXT NOT NULL,\n    date    TEXT NOT NULL\n);\nCREATE INDEX IF NOT EXISTS idx_messages_to ON messages(to_id, date);\n\nCREATE TABLE IF NOT EXISTS ratings (\n    coach_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n    athlete_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n    stars      INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),\n    updated_at TEXT NOT NULL,\n    PRIMARY KEY (coach_id, athlete_id)\n);\n\nCREATE TABLE IF NOT EXISTS notifications (\n    id      INTEGER PRIMARY KEY AUTOINCREMENT,\n    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n    text    TEXT NOT NULL,\n    date    TEXT NOT NULL,\n    read    INTEGER NOT NULL DEFAULT 0\n);\n\nCREATE TABLE IF NOT EXISTS profile_settings (\n    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n    key     TEXT NOT NULL,\n    value   TEXT NOT NULL,\n    PRIMARY KEY (user_id, key)\n);\n\nCREATE TABLE IF NOT EXISTS activity_logs (\n    id      INTEGER PRIMARY KEY AUTOINCREMENT,\n    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,\n    action  TEXT NOT NULL,\n    detail  TEXT,\n    ip      TEXT,\n    at      TEXT NOT NULL,\n    ua      TEXT\n);\nCREATE INDEX IF NOT EXISTS idx_logs_at ON activity_logs(at);\nCREATE INDEX IF NOT EXISTS idx_logs_user ON activity_logs(user_id, at);\n\n-- OTPs are stored as SHA-256 hashes only: a leaked database backup must not\n-- be enough to reset somebody's password. `attempts` kills a token after a\n-- handful of wrong guesses so a 6-digit code cannot be brute-forced.\nCREATE TABLE IF NOT EXISTS email_tokens (\n    email      TEXT NOT NULL COLLATE NOCASE,\n    purpose    TEXT NOT NULL,                 -- 'verify' | 'reset' | 'change'\n    code_hash  TEXT NOT NULL,                 -- sha256 of the 6-digit OTP\n    token_hash TEXT NOT NULL,                 -- sha256 of the long link token\n    payload    TEXT,                          -- e.g. user id for 'change'\n    attempts   INTEGER NOT NULL DEFAULT 0,\n    created_at TEXT NOT NULL,\n    expires_at TEXT NOT NULL\n);\nCREATE INDEX IF NOT EXISTS idx_tokens ON email_tokens(email, purpose);\nCREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);\nCREATE INDEX IF NOT EXISTS idx_users_role ON users(role);\nCREATE INDEX IF NOT EXISTS idx_profiles_user ON athlete_profiles(user_id);\nCREATE INDEX IF NOT EXISTS idx_coachprofiles_user ON coach_profiles(user_id);\nCREATE INDEX IF NOT EXISTS idx_ratings_coach ON ratings(coach_id);\nCREATE INDEX IF NOT EXISTS idx_ratings_athlete ON ratings(athlete_id);\nCREATE INDEX IF NOT EXISTS idx_notifs_user ON notifications(user_id, read);\n",
+ "SEED_DEMO": false,
+ "SEED_PASSWORD": "AthletixDemo!2026",
+ "SESSION_IDLE_SECONDS": 43200,
+ "SMTP_HOST": "",
+ "SMTP_PASS": "",
+ "SMTP_PORT": 465,
+ "SMTP_USER": "",
+ "SPORTS": [
+  "Football",
+  "Basketball",
+  "Volleyball",
+  "Rugby",
+  "Hockey (Field)",
+  "Handball",
+  "Lacrosse",
+  "Sepak Takraw",
+  "Kabaddi",
+  "Cricket",
+  "Baseball",
+  "Softball",
+  "Tennis",
+  "Badminton",
+  "Table Tennis",
+  "Boxing",
+  "Wrestling",
+  "MMA",
+  "Judo",
+  "Karate",
+  "Taekwondo",
+  "Fencing",
+  "Athletics",
+  "Cycling",
+  "Archery",
+  "Shooting",
+  "Golf",
+  "Snooker/Pool",
+  "Billiards",
+  "Weightlifting",
+  "Gymnastics",
+  "Parkour",
+  "Climbing",
+  "Skateboarding",
+  "Breakdancing"
+ ],
+ "TOKEN_MAX_ATTEMPTS": 5,
+ "TOKEN_TTL_MINUTES": 15,
+ "VIDEO_EXTS": [
+  ".mp4",
+  ".mov",
+  ".webm",
+  ".avi",
+  ".mkv",
+  ".m4v",
+  ".mpg",
+  ".mpeg"
+ ],
+ "VIDEO_SOURCES": [
+  "upload",
+  "live",
+  "camera",
+  "recorded"
+ ],
+ "_flask": {
+  "JSON_SORT_KEYS": false,
+  "MAX_CONTENT_LENGTH": 8388608,
+  "PERMANENT_SESSION_LIFETIME": "30 days, 0:00:00",
+  "SESSION_COOKIE_HTTPONLY": true,
+  "SESSION_COOKIE_NAME": "athletix_session",
+  "SESSION_COOKIE_SAMESITE": "Lax",
+  "SESSION_COOKIE_SECURE": false,
+  "TRAP_HTTP_EXCEPTIONS": false
+ },
+ "_routes": [
+  "GET /",
+  "GET /api/admin/activity",
+  "GET /api/admin/metrics",
+  "GET /api/admin/users",
+  "GET /api/coach/athletes",
+  "GET /api/coach/athletes/<int:aid>",
+  "GET /api/csrf",
+  "GET /api/export",
+  "GET /api/me",
+  "GET /api/messages/<int:other_id>",
+  "GET /api/my/messages",
+  "GET /api/my/notifications",
+  "GET /api/my/reports",
+  "GET /api/public/stats",
+  "GET /api/reports/<int:rid>",
+  "GET /api/session",
+  "GET /api/state",
+  "GET /manifest.json",
+  "GET /privacy",
+  "GET /sw.js",
+  "GET /terms",
+  "POST /api/admin/users/<int:uid>/role",
+  "POST /api/auth/forgot",
+  "POST /api/auth/login",
+  "POST /api/auth/logout",
+  "POST /api/auth/logout-all",
+  "POST /api/auth/resend",
+  "POST /api/auth/reset",
+  "POST /api/auth/signup",
+  "POST /api/auth/verify",
+  "POST /api/coach/profile",
+  "POST /api/consent",
+  "POST /api/messages",
+  "POST /api/notifications",
+  "POST /api/notifications/read",
+  "POST /api/profile/delete",
+  "POST /api/profile/email/confirm",
+  "POST /api/profile/email/request",
+  "POST /api/profile/password",
+  "POST /api/profile/photo",
+  "POST /api/profile/update",
+  "POST /api/ratings",
+  "POST /api/reports"
+ ]
+}
