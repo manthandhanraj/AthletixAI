@@ -999,6 +999,8 @@ body.owner .ax-metric-value.is-hero{ text-shadow:0 0 26px rgba(201,162,75,.32); 
 }
 .ax-metric-delta.is-flat{ color:var(--ax-text-3); background:rgba(255,255,255,.04);
   border-color:var(--ax-hairline); }
+/* the trailing phrase of a delta pill - "+5 this week" - sits back a little */
+.ax-metric-delta span{ font-weight:600; opacity:.72; }
 
 /* ── Status badges ─────────────────────────────────────────────────── */
 .ax-badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
@@ -1482,7 +1484,15 @@ body::before{
   background-size:54px 54px;
   mask-image:radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 75%);
 }
-.main, .sidebar, .topbar{ position:relative; z-index:1; }
+/* #app::before draws a fixed grid at z-index:0, so the content has to sit
+   above it. Only .main needs a position for that: .sidebar is position:fixed
+   (z-index:100) and .topbar is position:sticky (z-index:50), and both already
+   clear the grid on their own.
+   Naming them here reset the sidebar from fixed to relative, which put it
+   back into the flex row - so the 264px margin on .main was added on TOP of
+   a sidebar that now occupied real space, and the whole dashboard sat 528px
+   from the left. It also stopped the topbar sticking while scrolling. */
+.main{ position:relative; z-index:1; }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────── */
 .sidebar{
@@ -6756,7 +6766,10 @@ var AX = {
       var arrow = !isFinite(d) ? '' : d > 0 ? '↑ ' : d < 0 ? '↓ ' : '→ ';
       var txt = o.deltaText != null ? o.deltaText
               : (isFinite(d) ? (d > 0 ? '+' : '') + num(d, 1) : '');
-      delta = '<div class="ax-metric-delta ' + cls + '">' + arrow + h(txt) + '</div>';
+      // deltaNote is a plain phrase ("this week"), never markup: the escape
+      // below is what keeps it safe, and the span is built here.
+      var note = o.deltaNote ? ' <span>' + h(o.deltaNote) + '</span>' : '';
+      delta = '<div class="ax-metric-delta ' + cls + '">' + arrow + h(txt) + note + '</div>';
     }
     return '<div class="ax-metric' + (o.hero ? ' is-hero-card' : '') + '">' +
       '<div class="ax-metric-icon" aria-hidden="true">' + (o.icon || '') + '</div>' +
@@ -7214,11 +7227,11 @@ window.renderADash = function(){
   if(latest){
     metrics =
       AX.metric({ icon:'⭐', label:'Overall Score', value:latest.overall, dp:1, hero:true,
-                  delta:wk, deltaText:(wk >= 0 ? '+' : '') + wk + ' <span>this week</span>' }) +
+                  delta:wk, deltaText:(wk >= 0 ? '+' : '') + wk, deltaNote:'this week' }) +
       AX.metric({ icon:'🏅', label:'Best Score', value:best, dp:1 }) +
       AX.metric({ icon:'📹', label:'Assessments', value:rs.length }) +
       AX.metric({ icon:'🏆', label:'Leaderboard Points', value:pts,
-                  delta:prog, deltaText:(prog >= 0 ? '+' : '') + prog + ' <span>overall</span>' });
+                  delta:prog, deltaText:(prog >= 0 ? '+' : '') + prog, deltaNote:'overall' });
   } else {
     metrics =
       AX.metric({ icon:'⭐', label:'Overall Score', value:'—', animate:false, display:'—' }) +
