@@ -21,11 +21,16 @@ sent" when the job was refused outright.
 """
 
 import smtplib
+import json
+import urllib.error
+import urllib.request
+from email.utils import parseaddr
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from athletix.config import (EMAIL_DEV_MODE, MAIL_FROM, SMTP_HOST, SMTP_PASS,
-                             SMTP_PORT, SMTP_USER, TOKEN_TTL_MINUTES)
+from athletix.config import (BREVO_API_KEY, EMAIL_DEV_MODE, EMAIL_PROVIDER,
+                             MAIL_FROM, SMTP_HOST, SMTP_PASS, SMTP_PORT,
+                             SMTP_USER, TOKEN_TTL_MINUTES)
 
 
 def _email_shell(title, body_html):
@@ -124,6 +129,46 @@ def send_email(to_addr, subject, html):
     if EMAIL_DEV_MODE:
         print("\n[EMAIL DEV MODE] To: %s | Subject: %s" % (to_addr, subject))
         return True
+
+    if EMAIL_PROVIDER == "brevo":
+        if not BREVO_API_KEY:
+            print("[EMAIL FAILED] BREVO_API_KEY is not configured.")
+            return False
+        display_name, from_addr = parseaddr(MAIL_FROM)
+        if not from_addr:
+            print("[EMAIL FAILED] MAIL_FROM is not a valid email address.")
+            return False
+        payload = {
+            "sender": {"email": from_addr, "name": display_name or "AthletixAI"},
+            "to": [{"email": to_addr}],
+            "subject": subject,
+            "htmlContent": html,
+        }
+        request = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"accept": "application/json", "api-key": BREVO_API_KEY,
+                     "content-type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                response.read()
+            print("[EMAIL] sent to %s via Brevo API" % to_addr)
+            return True
+        except urllib.error.HTTPError as exc:
+            # Brevo's response describes a configuration error but never
+            # contains the API key, so logging it is safe and actionable.
+            detail = exc.read().decode("utf-8", "replace")
+            print("[EMAIL ERROR] Brevo API (%d) -> %s" % (exc.code, detail))
+        except Exception as exc:
+            print("[EMAIL ERROR] Brevo API -> %s" % exc)
+        return False
+
+    if EMAIL_PROVIDER != "smtp":
+        print("[EMAIL FAILED] Unsupported EMAIL_PROVIDER: %s" % EMAIL_PROVIDER)
+        return False
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = MAIL_FROM

@@ -252,7 +252,15 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
 MAIL_FROM = os.environ.get("MAIL_FROM", "AthletixAI <no-reply@athletix.ai>")
-EMAIL_DEV_MODE = not SMTP_HOST  # no SMTP configured -> print codes instead
+# Email is normally delivered through SMTP. Render's free instances block
+# SMTP ports, so the Brevo HTTPS API is also supported for production.
+# Leaving EMAIL_PROVIDER unset preserves the existing local-development
+# behaviour: SMTP when a host is configured, console-only otherwise.
+EMAIL_PROVIDER = os.environ.get("EMAIL_PROVIDER", "").strip().lower()
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
+if not EMAIL_PROVIDER:
+    EMAIL_PROVIDER = "smtp" if SMTP_HOST else "dev"
+EMAIL_DEV_MODE = EMAIL_PROVIDER == "dev"
 
 # --------------------------------------------------------------------------
 # Background job boundary (Phase 2.7)
