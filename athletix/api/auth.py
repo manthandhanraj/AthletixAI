@@ -18,7 +18,8 @@ from athletix.schemas import requests as rq
 from athletix.schemas.responses import ok
 from athletix.security.http import ensure_csrf
 from athletix.security.ratelimit import client_ip, limiter, too_many
-from athletix.security.session import current_user, login_required, start_session
+from athletix.security.session import (current_user, demo_locked,
+                                       login_required, start_session)
 from athletix.serializers import user_public
 from athletix.services import auth as auth_service
 from athletix.validation import body
@@ -116,6 +117,7 @@ def logout():
 
 @bp.post("/auth/logout-all")
 @login_required
+@demo_locked
 def logout_everywhere():
     """Revoke every session for this account, on every device."""
     auth_service.revoke_all_sessions(current_user()["id"])

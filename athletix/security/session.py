@@ -12,7 +12,8 @@ from functools import wraps
 
 from flask import g, request, session
 
-from athletix.config import PRIVILEGED_ROLES, SESSION_IDLE_SECONDS
+from athletix.config import (PRIVILEGED_ROLES, SESSION_IDLE_SECONDS,
+                             is_demo_email)
 from athletix.repositories import users as user_repo
 from athletix.errors import (AuthenticationError,
                              AuthorizationError)
@@ -108,6 +109,29 @@ def login_required(fn):
             # Typed error so the response carries a machine-readable code;
             # the message and 401 status are unchanged from Phase 1.
             raise AuthenticationError("Authentication required")
+        return fn(*a, **kw)
+    return wrapper
+
+
+def demo_locked(fn):
+    """Refuse credential and lifecycle changes on the shared demo logins.
+
+    Their password is published on the login page, so without this one
+    visitor could change it, move the e-mail, delete the account or sign
+    every other judge out - and break the demo for everyone after them.
+    Everything else (profile edits, uploads, reports, messages) stays open,
+    so the features themselves can still be tried.
+
+    Apply below @login_required.
+    """
+    @wraps(fn)
+    def wrapper(*a, **kw):
+        u = current_user()
+        if u and is_demo_email(u["email"]):
+            raise AuthorizationError(
+                "This is a shared demo account, so its password, e-mail and "
+                "sign-out-everywhere are locked and it cannot be deleted. "
+                "Create your own account to try these.")
         return fn(*a, **kw)
     return wrapper
 

@@ -40,6 +40,15 @@ services:
         sync: false
       - key: OWNER_PASSWORD
         sync: false
+      # Demo access for judges. Off unless DEMO_MODE is set to "1".
+      # DEMO_PASSWORD belongs in a Render Secret File (see DEPLOY.md,
+      # "Step 4"), not here and not in the dashboard's plain env vars.
+      - key: DEMO_MODE
+        sync: false
+      - key: DEMO_ATHLETE_EMAIL
+        sync: false
+      - key: DEMO_COACH_EMAIL
+        sync: false
       # Render terminates TLS in front of the app, so X-Forwarded-For is
       # trustworthy here and rate limiting should key on the real client IP.
       - key: TRUST_PROXY

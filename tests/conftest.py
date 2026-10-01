@@ -26,6 +26,10 @@ os.environ.update(
     OWNER_EMAIL="owner@test.local",
     OWNER_PASSWORD="OwnerPass!2026",
     SEED_DEMO="0",                # no demo roster; tests build what they need
+    # Pinned off so a developer's DEMO_MODE=1 in .env cannot provision demo
+    # logins into the test database; test_demo_mode.py turns it on per test.
+    DEMO_MODE="0",
+    DEMO_PASSWORD="",
     APP_ENV="test",
     TRUST_PROXY="",
 )

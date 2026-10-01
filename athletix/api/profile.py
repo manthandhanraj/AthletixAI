@@ -10,8 +10,9 @@ from flask import Blueprint, jsonify, session
 from athletix.config import DEV_CODES
 from athletix.schemas import requests as rq
 from athletix.security.ratelimit import too_many
-from athletix.security.session import (current_user, login_required,
-                                       reload_user, start_session)
+from athletix.security.session import (current_user, demo_locked,
+                                       login_required, reload_user,
+                                       start_session)
 from athletix.serializers import user_public
 from athletix.services import auth as auth_service
 from athletix.services import profile as profile_service
@@ -49,6 +50,7 @@ def profile_photo():
 
 @bp.post("/profile/password")
 @login_required
+@demo_locked
 def change_password():
     u = current_user()
     limited = too_many("password", str(u["id"]))
@@ -65,6 +67,7 @@ def change_password():
 
 @bp.post("/profile/email/request")
 @login_required
+@demo_locked
 def request_email_change():
     u = current_user()
     limited = too_many("email_change", str(u["id"]))
@@ -81,6 +84,7 @@ def request_email_change():
 
 @bp.post("/profile/email/confirm")
 @login_required
+@demo_locked
 def confirm_email_change():
     u = current_user()
     limited = too_many("email_change", str(u["id"]))
@@ -95,6 +99,7 @@ def confirm_email_change():
 
 @bp.post("/profile/delete")
 @login_required
+@demo_locked
 def delete_account():
     u = current_user()
     profile_service.delete_account(

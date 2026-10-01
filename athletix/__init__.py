@@ -41,6 +41,7 @@ def create_app(config_overrides=None, initialize=True):
 
     _register_request_hooks(app)
     _register_blueprints(app)
+    _register_template_globals(app, cfg)
 
     # The asynchronous work boundary (Phase 2.7). Installing it here - not at
     # import - keeps `import athletix` free of side effects: no worker thread
@@ -59,6 +60,30 @@ def create_app(config_overrides=None, initialize=True):
         run_startup(app)
 
     return app
+
+
+def _register_template_globals(app, cfg):
+    """Flags the templates need.
+
+    The demo password is passed only when at least one demo login was really
+    provisioned, and only to be printed in the Demo Access panel. Each login
+    is advertised only if it exists - a panel pointing at an account that
+    failed to provision is worse than no panel.
+    """
+    @app.context_processor
+    def _template_flags():
+        from athletix import bootstrap
+        athlete_ok = cfg.DEMO_MODE and bootstrap.demo_ready("athlete")
+        coach_ok = cfg.DEMO_MODE and bootstrap.demo_ready("coach")
+        show = athlete_ok or coach_ok
+        return {
+            "demo_mode": show,
+            "demo_athlete_ready": athlete_ok,
+            "demo_coach_ready": coach_ok,
+            "demo_password": cfg.DEMO_PASSWORD if show else "",
+            "demo_athlete_email": cfg.DEMO_ATHLETE_EMAIL,
+            "demo_coach_email": cfg.DEMO_COACH_EMAIL,
+        }
 
 
 def _register_request_hooks(app):

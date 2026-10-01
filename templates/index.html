@@ -1001,6 +1001,36 @@ body.owner .ax-metric-value.is-hero{ text-shadow:0 0 26px rgba(201,162,75,.32); 
   border-color:var(--ax-hairline); }
 /* the trailing phrase of a delta pill - "+5 this week" - sits back a little */
 .ax-metric-delta span{ font-weight:600; opacity:.72; }
+/* Demo Access panel - only rendered when DEMO_MODE=1 */
+.ax-demo-access{
+  background:rgba(34,211,238,.07) !important;
+  border:1px solid rgba(34,211,238,.24) !important;
+}
+.ax-demo-access b{ color:var(--au-cy,#00E5FF) !important; }
+.ax-demo-access .ax-demo-email{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11.5px; word-break:break-all; }
+.ax-demo-access .ax-demo-title{ display:block; margin-bottom:4px; }
+.ax-demo-row{ display:flex; align-items:center; justify-content:space-between;
+  gap:10px; padding:5px 0; }
+.ax-demo-who{ min-width:0; }
+.ax-demo-try{
+  flex:0 0 auto; cursor:pointer; font:inherit; font-size:11.5px; font-weight:700;
+  padding:5px 13px; border-radius:999px; color:#04141d;
+  background:linear-gradient(135deg,#22D3EE,#00B8D9); border:0;
+  box-shadow:0 0 14px -4px rgba(34,211,238,.7);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.ax-demo-try:hover{ transform:translateY(-1px); box-shadow:0 0 18px -3px rgba(34,211,238,.9); }
+.ax-demo-try:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+.ax-demo-pass{ margin-top:4px; padding-top:7px; border-top:1px solid rgba(34,211,238,.16); }
+.ax-demo-secret{ letter-spacing:.06em; }
+
+/* shown in a chart box when Chart.js could not be fetched */
+.chart-fallback{
+  display:grid; place-items:center; height:100%; min-height:140px; padding:18px;
+  text-align:center; font-size:12.5px; line-height:1.6; color:var(--ax-text-3);
+  border:1px dashed var(--ax-hairline); border-radius:12px;
+}
 
 /* ── Status badges ─────────────────────────────────────────────────── */
 .ax-badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
@@ -2458,10 +2488,29 @@ body:not(.ax-signed-in) #app{ display:none !important; }
         <option value="hinglish">Hinglish</option>
       </select>
     </div>
-    <div class="demo-hint">
-      <b>Demo logins:</b><br>
-      Athlete &rarr; <b>arjun@athletix.ai</b> &middot; Coach &rarr; <b>coach@athletix.ai</b>
-    </div>
+    {% if demo_mode %}
+    <div class="demo-hint ax-demo-access">
+      <b class="ax-demo-title">Demo Access</b>
+      {% if demo_athlete_ready %}
+      <div class="ax-demo-row">
+        <span class="ax-demo-who"><span>Demo Athlete</span> &rarr;
+          <b class="ax-demo-email">{{ demo_athlete_email }}</b></span>
+        <button type="button" class="ax-demo-try" data-demo-role="athlete"
+                data-demo-email="{{ demo_athlete_email }}">Try</button>
+      </div>
+      {% endif %}
+      {% if demo_coach_ready %}
+      <div class="ax-demo-row">
+        <span class="ax-demo-who"><span>Demo Coach</span> &rarr;
+          <b class="ax-demo-email">{{ demo_coach_email }}</b></span>
+        <button type="button" class="ax-demo-try" data-demo-role="coach"
+                data-demo-email="{{ demo_coach_email }}">Try</button>
+      </div>
+      {% endif %}
+      <div class="ax-demo-pass"><span>Password</span> &rarr;
+        <b class="ax-demo-email ax-demo-secret">{{ demo_password }}</b></div>
+    </div><!-- /demo-access -->
+    {% endif %}
     <div class="legal-note">
       Under 18? You need a parent's permission to use AthletixAI.<br>
       Owned by <b>Archita Tripathi</b> &amp; <b>Manthan Dhanraj</b>
@@ -3238,6 +3287,12 @@ var LANGS = { en:'English', hi:'\u0939\u093f\u0928\u094d\u0926\u0940', hinglish:
 var I18N = {
   hi: {
     /* ── Phase UI: strings the audit found untranslated ── */
+    "Try": "आज़माएँ",
+    "Demo Access": "डेमो एक्सेस",
+    "Demo Athlete": "डेमो एथलीट",
+    "Demo Coach": "डेमो कोच",
+    "Chart unavailable offline.": "चार्ट ऑफ़लाइन उपलब्ध नहीं।",
+    "Radar chart unavailable offline - the full comparison is in the table below.": "रडार चार्ट ऑफ़लाइन उपलब्ध नहीं — पूरी तुलना नीचे टेबल में है।",
     "33-point pose AI": "33-पॉइंट पोज़ एआई",
     "6-digit code": "6-अंकों का कोड",
     "AI insights for India’s next generation athletes.": "भारत की अगली पीढ़ी के एथलीट के लिए एआई जानकारी।",
@@ -3797,6 +3852,12 @@ var I18N = {
   },
   hinglish: {
     /* ── Phase UI: strings the audit found untranslated ── */
+    "Try": "Try karo",
+    "Demo Access": "Demo Access",
+    "Demo Athlete": "Demo Athlete",
+    "Demo Coach": "Demo Coach",
+    "Chart unavailable offline.": "Chart offline available nahi.",
+    "Radar chart unavailable offline - the full comparison is in the table below.": "Radar chart offline available nahi — poori comparison neeche table me hai.",
     "33-point pose AI": "33-point pose AI",
     "6-digit code": "6-digit code",
     "AI insights for India’s next generation athletes.": "India ki next generation athletes ke liye AI insights.",
@@ -5514,6 +5575,16 @@ function sendMessage(){
 
 /* ═══════════════ CHARTS (fixed-height, destroy-safe) ═══════════════ */
 const chartRefs = {};
+/* Chart.js is loaded from a CDN. When it is not there, say so in the box
+   instead of throwing - an uncaught error here takes the whole page down. */
+function chartReady(el){
+  if(typeof Chart !== 'undefined') return true;
+  if(el && el.parentElement){
+    el.parentElement.innerHTML =
+      '<div class="chart-fallback">Chart unavailable offline.</div>';
+  }
+  return false;
+}
 function themeC(){ return document.body.classList.contains('coach') ? '#2E86FF' : '#FF2B2B'; }
 function themeC2(){ return document.body.classList.contains('coach') ? '#74B3FF' : '#FF6B6B'; }
 function baseOpts(){
@@ -5523,7 +5594,7 @@ function baseOpts(){
             y:{ticks:{color:'#8F8F8F'}, grid:{color:'rgba(255,255,255,.05)'} } } };
 }
 function lineChart(id, labels, data, label){
-  const el = byId(id); if(!el) return;
+  const el = byId(id); if(!el || !chartReady(el)) return;
   if(chartRefs[id]) chartRefs[id].destroy();
   chartRefs[id] = new Chart(el.getContext('2d'), {
     type:'line',
@@ -5533,7 +5604,7 @@ function lineChart(id, labels, data, label){
   });
 }
 function barChart(id, labels, data, label){
-  const el = byId(id); if(!el) return;
+  const el = byId(id); if(!el || !chartReady(el)) return;
   if(chartRefs[id]) chartRefs[id].destroy();
   chartRefs[id] = new Chart(el.getContext('2d'), {
     type:'bar',
@@ -6074,6 +6145,17 @@ function renderCompare(){
   const ma=ra?ra.m:{speed:0,agility:0,strength:0,stamina:0,technique:0};
   const mb=rb?rb.m:{speed:0,agility:0,strength:0,stamina:0,technique:0};
   const el=byId('compareRadar');
+  if(typeof Chart === 'undefined'){
+    // Chart.js comes from a CDN. If it did not load, still show the
+    // head-to-head numbers below instead of throwing and killing the page.
+    if(el && el.parentElement){
+      el.parentElement.innerHTML =
+        '<div class="chart-fallback">Radar chart unavailable offline - ' +
+        'the full comparison is in the table below.</div>';
+    }
+    renderCompareTable(a, b, ma, mb, ra, rb);
+    return;
+  }
   if(compareChart) compareChart.destroy();
   compareChart=new Chart(el.getContext('2d'),{
     type:'radar',
@@ -6086,11 +6168,18 @@ function renderCompare(){
       plugins:{legend:{labels:{color:'#c9c9c9'} } },
       scales:{r:{angleLines:{color:'rgba(255,255,255,.1)'},grid:{color:'rgba(255,255,255,.1)'},pointLabels:{color:'#c9c9c9',font:{size:12} },ticks:{display:false},min:0,max:100} } }
   });
+  renderCompareTable(a, b, ma, mb, ra, rb);
+}
+/* Both exits above re-render text, and the dropdowns call renderCompare()
+   directly (not through showPage), so the language has to be re-applied
+   here or a re-pick would snap the table back to English. */
+function renderCompareTable(a, b, ma, mb, ra, rb){
   byId('compareTable').innerHTML=METRICS.map(function(k){
     const va=ma[k],vb=mb[k],win=va>vb?a.name:(vb>va?b.name:'Tie');
     return '<div class="rd-row"><span>'+MLABELS[k]+'</span><span><b style="color:#FF6B6B;">'+va+'</b> vs <b style="color:#74B3FF;">'+vb+'</b> · 🏆 '+win+'</span></div>';
   }).join('')+
   '<div class="rd-row"><span><b>OVERALL</b></span><span><b style="color:#FF6B6B;">'+(ra?ra.overall:0)+'</b> vs <b style="color:#74B3FF;">'+(rb?rb.overall:0)+'</b></span></div>';
+  try{ applyLang(); }catch(e){}
 }
 
 /* ═══════════════ ANALYTICS (coach) ═══════════════ */
@@ -6122,6 +6211,11 @@ function renderAnalytics(){
 }
 function anBar(id,labels,data){
   const el=byId(id); if(!el) return;
+  if(typeof Chart === 'undefined'){
+    if(el.parentElement) el.parentElement.innerHTML =
+      '<div class="chart-fallback">Chart unavailable offline.</div>';
+    return;
+  }
   if(anCharts[id]) anCharts[id].destroy();
   const c=document.body.classList.contains('coach')?'#2E86FF':'#FF2B2B';
   anCharts[id]=new Chart(el.getContext('2d'),{type:'bar',
@@ -6688,6 +6782,18 @@ if('serviceWorker' in navigator){
       .then(function(){ console.info('AthletixAI: service worker registered'); })
       .catch(function(err){ console.warn('AthletixAI: SW registration failed', err); });
   });
+  /* The first visit after a worker update is still served by the OLD
+     worker, which (v1) broke CDN scripts such as Chart.js. When the new one
+     takes over and this page came up without Chart.js, reload once so the
+     charts appear without the user having to guess. The session flag
+     makes a loop impossible. */
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    var done = false;
+    try{ done = sessionStorage.getItem('ax_sw_reloaded') === '1'; }catch(e){}
+    if(done || typeof Chart !== 'undefined') return;
+    try{ sessionStorage.setItem('ax_sw_reloaded', '1'); }catch(e){ return; }
+    location.reload();
+  });
 }
 /* Already installed? Hide the install button. */
 window.addEventListener('appinstalled', function(){
@@ -6909,7 +7015,13 @@ function themeCharts(){
   Chart.defaults.plugins.tooltip.displayColors = false;
   Chart.defaults.scale.grid.color = grid;
   Chart.defaults.scale.grid.drawTicks = false;
-  Chart.defaults.scale.border = { display:false };
+  // Set the property, do not replace the object: Chart.js keeps dash,
+  // dashOffset and width on scale.border, and a bare { display:false }
+  // wipes them. The first scale border that drew then called
+  // ctx.setLineDash(undefined), which throws - and that uncaught error
+  // aborted rendering, leaving every canvas on the page blank.
+  if(Chart.defaults.scale.border) Chart.defaults.scale.border.display = false;
+  else Chart.defaults.scale.border = { display:false, dash:[], dashOffset:0, width:1 };
   Chart.defaults.elements.line.borderWidth = 2.5;
   Chart.defaults.elements.point.radius = 0;
   Chart.defaults.elements.point.hoverRadius = 5;

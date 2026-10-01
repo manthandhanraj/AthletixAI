@@ -158,6 +158,25 @@
       }
     });
 
+    /* Demo Access "Try": pick the matching role (the server checks it),
+       switch to the login form, fill the address and leave the cursor in
+       the password box - the visitor only has to type the password. */
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('.ax-demo-try');
+      if (!btn) return;
+      var role = btn.getAttribute('data-demo-role') === 'coach' ? 'coach' : 'athlete';
+      if (typeof global.authSetRole === 'function') global.authSetRole(role);
+      if (typeof global.authSetTab === 'function') global.authSetTab('login');
+      var email = byId('loginEmail'), pass = byId('loginPass'), msg = byId('authMsg');
+      if (email) email.value = btn.getAttribute('data-demo-email') || '';
+      if (msg) msg.textContent = '';
+      if (pass) {
+        pass.value = '';
+        try { pass.focus({ preventScroll: true }); } catch (err) { pass.focus(); }
+        try { pass.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (err) {}
+      }
+    });
+
     /* keyboard parity for the role cards and the span-based links */
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.key !== ' ') return;

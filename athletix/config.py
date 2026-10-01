@@ -75,6 +75,11 @@ def load_dotenv(base_dir=None):
 
 
 load_dotenv()
+# Render (and several other hosts) mount "secret files" at /etc/secrets. A
+# secret file named .env is therefore picked up here without the operator
+# having to copy anything into the repo. load_dotenv() uses setdefault, so a
+# real environment variable still wins over both files.
+load_dotenv("/etc/secrets")
 
 
 # --------------------------------------------------------------------------
@@ -404,6 +409,39 @@ CSP_REPORT_ONLY = bool(os.environ.get("CSP_REPORT_ONLY"))
 # and startup_checks() refuses to boot if it is forced on in production.
 SEED_PASSWORD = os.environ.get("SEED_PASSWORD", "AthletixDemo!2026")
 SEED_DEMO = os.environ.get("SEED_DEMO", "0" if IS_PRODUCTION else "1") == "1"
+
+
+# --------------------------------------------------------------------------
+# Demo access  (opt-in; safe to enable in production)
+# --------------------------------------------------------------------------
+# Deliberately a separate mechanism from SEED_DEMO above, not a relaxation
+# of it. SEED_DEMO fills an EMPTY database with a fictional roster behind a
+# password written in this file, which is exactly why production refuses it.
+# DEMO_MODE instead provisions exactly two ordinary accounts - one athlete,
+# one coach - whose password exists only in the environment, works on a
+# database that already holds real users, and can never carry admin or owner
+# rights. Off unless explicitly turned on.
+DEMO_MODE = os.environ.get("DEMO_MODE", "0").strip() == "1"
+DEMO_ATHLETE_EMAIL = os.environ.get(
+    "DEMO_ATHLETE_EMAIL", "demo.athlete@athletix.ai").strip().lower()
+DEMO_COACH_EMAIL = os.environ.get(
+    "DEMO_COACH_EMAIL", "demo.coach@athletix.ai").strip().lower()
+# No default, ever. An unset DEMO_PASSWORD means no demo account is
+# provisioned at all. It is shown on the login page (so judges can sign in
+# without asking), but it is never logged and never returned by an API.
+DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "").strip()
+
+
+def is_demo_email(email):
+    """True for the two shared demo logins while DEMO_MODE is on.
+
+    Read at call time, not import time, so the answer always reflects the
+    live configuration.
+    """
+    if not DEMO_MODE:
+        return False
+    return (email or "").strip().lower() in (DEMO_ATHLETE_EMAIL,
+                                            DEMO_COACH_EMAIL)
 
 
 def flask_settings():
