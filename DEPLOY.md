@@ -88,15 +88,38 @@ Box sirf un accounts ke liye dikhta hai jo startup pe **sach me ban gaye**.
 Agar `DEMO_PASSWORD` khali hai (ya koi account refuse hua), box nahi dikhega
 — logs me `[FATAL]` line dekho.
 
+**Sample data bhi aata hai.** `DEMO_MODE=1` wahi 12 sample athletes (Arjun
+Singh, Priya Sharma, …, unke 6-6 reports ke saath) aur 3 sample coaches
+(Coach Verma, Meera Iyer, Rajesh Khanna) bhi bana deta hai jo localhost pe
+dikhte hain. Isse demo coach ko athletes list, leaderboard, compare,
+analytics sab bhare hue milte hain. Logs me:
+
+    [INFO] Demo sample roster: 15 sample profiles added (display only - nobody can sign in as them).
+
+In 15 profiles me **koi login nahi kar sakta**. Unka password ek random
+secret hai jo kahin save nahi hota. Unke email `@sample.athletix.invalid`
+pe hain — ye domain kabhi register nahi ho sakta, isliye password reset bhi
+impossible hai. Koi admin account nahi banta. Ye sample log site ke **sab
+users** ko dikhenge (leaderboard, directory), sirf judges ko nahi.
+
 ### 4d — Password badalna ya demo band karna
 
 - **Password rotate:** Secret File me `DEMO_PASSWORD` badlo → redeploy.
   Agle startup pe hash update ho jayega aur purane sessions apne aap invalid
   ho jayenge.
-- **Band karna:** `DEMO_MODE` ko `0` kar do (ya hata do) → redeploy. Demo
-  box gayab, aur naye credentials provision nahi honge.
-  > Note: accounts database me rahte hain. Poori tarah hatana ho to Render
-  > Shell se dono rows delete kar dena.
+- **Band karna (judging ke baad):**
+  1. `DEMO_MODE` ko `0` kar do (ya hata do) → redeploy. Demo box gayab.
+  2. Render dashboard → service → **Shell** me ye ek command chalao:
+
+         python -c "from athletix.bootstrap import remove_demo_data; remove_demo_data()"
+
+     Ye dono demo logins aur saare 15 sample profiles (unke reports
+     samet) hata deta hai. Sirf wahi rows chhuta hai jo DEMO_MODE ne banaye —
+     real users, owner aur koi admin/owner account kabhi delete nahi hota.
+     Output: `[INFO] Removed 15 sample profiles and 2 demo logins.`
+
+  Step 1 pehle karna zaroori hai — warna agle startup pe sab dobara ban
+  jayega.
 
 ### Kya guarantee hai
 
@@ -114,8 +137,8 @@ Agar `DEMO_PASSWORD` khali hai (ya koi account refuse hua), box nahi dikhega
   tod deta. Baaki features (profile edit, upload, reports, messages) khule
   hain.
 - **DEMO_MODE band karne ke baad** ye lock hat jata hai aur accounts
-  database me `12345` ke saath pade rehte hain. Isliye judging ke baad Render
-  Shell se dono rows delete kar dena.
+  database me `12345` ke saath pade rehte hain. Isliye judging ke baad 4d
+  wali `remove_demo_data()` command zaroor chalana.
 
 ## Step 5 — Domain (optional, ~Rs 800/saal)
 1. Domain khareedo (Namecheap / GoDaddy / Hostinger) — e.g. athletixai.in

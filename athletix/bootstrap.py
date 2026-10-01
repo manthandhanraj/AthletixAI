@@ -10,6 +10,8 @@ invokes them directly. Importing any athletix module does nothing.
 import datetime
 import json
 import os
+import random
+import secrets
 
 from athletix.config import (BCRYPT_ROUNDS, COOKIE_SECURE, DEBUG_MODE,
                              DEMO_ATHLETE_EMAIL, DEMO_COACH_EMAIL,
@@ -21,6 +23,66 @@ from athletix.config import DB_PATH
 from athletix.database import SCHEMA, connect, init_db, migrate, now_iso
 from athletix.security.passwords import check_password, hash_password
 from athletix.validation import password_problem
+
+
+# The fictional roster. seed() writes it into an empty LOCAL database behind
+# the publicly known SEED_PASSWORD; with DEMO_MODE=1 the same people are also
+# written into a deployed database, as display-only sample data that nobody
+# can sign in as (see _ensure_demo_roster).
+_ROSTER = [
+    ("Arjun Singh", 17, "Cricket", "arjun@athletix.ai", "Rural"),
+    ("Priya Sharma", 16, "Athletics", "priya.sharma@athletix.ai", "Urban"),
+    ("Ravi Kumar", 15, "Football", "ravi.kumar@athletix.ai", "Rural"),
+    ("Anjali Patel", 18, "Wrestling", "anjali.patel@athletix.ai", "Urban"),
+    ("Deepak Yadav", 14, "Kabaddi", "deepak.yadav@athletix.ai", "Rural"),
+    ("Sneha Gupta", 17, "Athletics", "sneha.gupta@athletix.ai", "Urban"),
+    ("Manish Tiwari", 16, "Cricket", "manish.tiwari@athletix.ai", "Rural"),
+    ("Kavita Rajput", 15, "Football", "kavita.rajput@athletix.ai", "Urban"),
+    ("Suresh Mehra", 19, "Wrestling", "suresh.mehra@athletix.ai", "Rural"),
+    ("Pooja Nair", 16, "Kabaddi", "pooja.nair@athletix.ai", "Urban"),
+    ("Vikram Chauhan", 18, "Cricket", "vikram.chauhan@athletix.ai", "Rural"),
+    ("Divya Mishra", 17, "Athletics", "divya.mishra@athletix.ai", "Urban"),
+]
+_ROSTER_DRIFT = [1.6, 2.2, -1.2, 0.8, 1.9, 2.4, -0.6, 1.1, 0.4, 1.7, -1.5, 2.6]
+_METRIC_KEYS = ["speed", "agility", "strength", "stamina", "technique"]
+# (name, email, phone, specialty, bio, experience, city, achievements)
+_SAMPLE_COACHES = [
+    ("Coach Verma", "coach@athletix.ai", "+91 90000 11111",
+     "Sprint & Strength Conditioning",
+     "National-level athletics coach dedicated to finding and "
+     "building India's next generation of athletes.", 12, "Delhi",
+     ["Produced 3 national-level sprinters", "NIS certified coach",
+      "15+ district champions trained"]),
+    ("Coach Meera Iyer", "meera@athletix.ai", "", "Athletics & Sprints",
+     "Sprint specialist. Speed is a skill - I teach it.", 9, "Pune",
+     ["Asian Junior Athletics - Silver (2015)",
+      "Produced 3 national-level sprinters",
+      "World Athletics Level-2 Sprints Coach"]),
+    ("Coach Rajesh Khanna", "rajesh@athletix.ai", "", "Cricket",
+     "Former Ranji player. Technique first, everything else follows.", 14,
+     "Mumbai",
+     ["Ranji Trophy player (2008-14)", "U-19 State team Head Coach",
+      "BCCI Level-B Certified"]),
+]
+
+
+def _write_roster_reports(db, uid, sport, drift, rng):
+    """Six assessments on a gentle trend - the history the dashboards draw."""
+    def clamp(v):
+        return max(40, min(99, int(v)))
+
+    m = {k: rng.randint(58, 80) for k in _METRIC_KEYS}
+    for k in range(6):
+        date = (datetime.datetime.now() -
+                datetime.timedelta(days=k * 3, hours=rng.randint(0, 10)))
+        for key in _METRIC_KEYS:
+            m[key] = clamp(m[key] + drift + rng.randint(-3, 3))
+        ov = round(sum(m.values()) / 5.0, 1)
+        db.execute(
+            "INSERT INTO reports (athlete_id,date,sport,speed,agility,"
+            "strength,stamina,technique,overall) VALUES (?,?,?,?,?,?,?,?,?)",
+            (uid, date.isoformat(timespec="seconds"), sport, m["speed"],
+             m["agility"], m["strength"], m["stamina"], m["technique"], ov))
 
 
 def seed():
@@ -38,29 +100,8 @@ def seed():
         db.close()
         return
 
-    import random
-
-    def clamp(v):
-        return max(40, min(99, int(v)))
-
-    roster = [
-        ("Arjun Singh", 17, "Cricket", "arjun@athletix.ai", "Rural"),
-        ("Priya Sharma", 16, "Athletics", "priya.sharma@athletix.ai", "Urban"),
-        ("Ravi Kumar", 15, "Football", "ravi.kumar@athletix.ai", "Rural"),
-        ("Anjali Patel", 18, "Wrestling", "anjali.patel@athletix.ai", "Urban"),
-        ("Deepak Yadav", 14, "Kabaddi", "deepak.yadav@athletix.ai", "Rural"),
-        ("Sneha Gupta", 17, "Athletics", "sneha.gupta@athletix.ai", "Urban"),
-        ("Manish Tiwari", 16, "Cricket", "manish.tiwari@athletix.ai", "Rural"),
-        ("Kavita Rajput", 15, "Football", "kavita.rajput@athletix.ai", "Urban"),
-        ("Suresh Mehra", 19, "Wrestling", "suresh.mehra@athletix.ai", "Rural"),
-        ("Pooja Nair", 16, "Kabaddi", "pooja.nair@athletix.ai", "Urban"),
-        ("Vikram Chauhan", 18, "Cricket", "vikram.chauhan@athletix.ai", "Rural"),
-        ("Divya Mishra", 17, "Athletics", "divya.mishra@athletix.ai", "Urban"),
-    ]
-    drift = [1.6, 2.2, -1.2, 0.8, 1.9, 2.4, -0.6, 1.1, 0.4, 1.7, -1.5, 2.6]
     pw = hash_password(SEED_PASSWORD)
-    metric_keys = ["speed", "agility", "strength", "stamina", "technique"]
-    for idx, (name, age, sport, email, loc) in enumerate(roster):
+    for idx, (name, age, sport, email, loc) in enumerate(_ROSTER):
         cur = db.execute(
             "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
             "created_at) VALUES ('athlete',?,?,?,?,1,?)",
@@ -68,48 +109,13 @@ def seed():
         uid = cur.lastrowid
         db.execute("INSERT INTO athlete_profiles (user_id,sport,age,location)"
                    " VALUES (?,?,?,?)", (uid, sport, age, loc))
-        m = {k: random.randint(58, 80) for k in metric_keys}
-        for k in range(6):
-            date = (datetime.datetime.now() -
-                    datetime.timedelta(days=k * 3, hours=random.randint(0, 10)))
-            for key in metric_keys:
-                m[key] = clamp(m[key] + drift[idx] + random.randint(-3, 3))
-            ov = round(sum(m.values()) / 5.0, 1)
-            db.execute(
-                "INSERT INTO reports (athlete_id,date,sport,speed,agility,"
-                "strength,stamina,technique,overall) VALUES (?,?,?,?,?,?,?,?,?)",
-                (uid, date.isoformat(timespec="seconds"), sport, m["speed"],
-                 m["agility"], m["strength"], m["stamina"], m["technique"], ov))
-    # Coach + admin
-    cur = db.execute(
-        "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
-        "created_at) VALUES ('coach',?,?,?,?,1,?)",
-        ("Coach Verma", "coach@athletix.ai", "+91 90000 11111", pw, now_iso()))
-    db.execute("INSERT INTO coach_profiles (user_id,specialty,bio,experience,"
-               "city,achievements) VALUES (?,?,?,?,?,?)",
-               (cur.lastrowid, "Sprint & Strength Conditioning",
-                "National-level athletics coach dedicated to finding and "
-                "building India's next generation of athletes.", 12, "Delhi",
-                json.dumps(["Produced 3 national-level sprinters",
-                            "NIS certified coach",
-                            "15+ district champions trained"])))
-    # two more coaches (parity with the demo roster)
-    for nm, em, spec, bio, exp, city, ach in [
-        ("Coach Meera Iyer", "meera@athletix.ai", "Athletics & Sprints",
-         "Sprint specialist. Speed is a skill - I teach it.", 9, "Pune",
-         ["Asian Junior Athletics - Silver (2015)",
-          "Produced 3 national-level sprinters",
-          "World Athletics Level-2 Sprints Coach"]),
-        ("Coach Rajesh Khanna", "rajesh@athletix.ai", "Cricket",
-         "Former Ranji player. Technique first, everything else follows.", 14,
-         "Mumbai",
-         ["Ranji Trophy player (2008-14)", "U-19 State team Head Coach",
-          "BCCI Level-B Certified"]),
-    ]:
+        _write_roster_reports(db, uid, sport, _ROSTER_DRIFT[idx], random)
+    # Coaches (Coach Verma + two more, parity with the demo roster) + admin
+    for nm, em, phone, spec, bio, exp, city, ach in _SAMPLE_COACHES:
         cur2 = db.execute(
             "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
             "created_at) VALUES ('coach',?,?,?,?,1,?)",
-            (nm, em, "", pw, now_iso()))
+            (nm, em, phone, pw, now_iso()))
         db.execute("INSERT INTO coach_profiles (user_id,specialty,bio,"
                    "experience,city,achievements) VALUES (?,?,?,?,?,?)",
                    (cur2.lastrowid, spec, bio, exp, city, json.dumps(ach)))
@@ -229,6 +235,109 @@ def _demo_sample_reports(db, uid):
              m[0], m[1], m[2], m[3], m[4], round(sum(m) / 5.0, 1)))
 
 
+# Sample people live on a reserved domain. ".invalid" can never be registered
+# (RFC 2606), so no inbox exists for these addresses: no verification or
+# password-reset mail can ever be received, which means nobody can take one
+# of them over. It also makes them exactly identifiable for clean-up.
+DEMO_SAMPLE_DOMAIN = "sample.athletix.invalid"
+
+
+def _sample_email(local_email):
+    return local_email.split("@", 1)[0] + "@" + DEMO_SAMPLE_DOMAIN
+
+
+def _ensure_demo_roster(db):
+    """Write the fictional roster into this database as sample data.
+
+    This is what a deployed demo was missing: SEED_DEMO (refused in
+    production, rightly) is the only thing that created these people, so the
+    demo coach on Render had an empty athlete list and the leaderboard had
+    one name on it.
+
+    Different from seed() in the ways that make it safe in production:
+      * nobody can sign in as these people - their password is a random
+        secret that is hashed and immediately discarded, and their e-mail is
+        on a domain that cannot receive mail (so no reset either);
+      * no admin account, and no phone numbers;
+      * works on a database that already has real users, adding only what
+        is missing, and never duplicates on restart;
+      * skips anyone the local seed already created, so a laptop running
+        SEED_DEMO and DEMO_MODE together does not show everybody twice.
+    """
+    unusable = hash_password(secrets.token_urlsafe(32))
+
+    def exists(email):
+        return db.execute("SELECT 1 FROM users WHERE email = ?",
+                          (email,)).fetchone() is not None
+
+    added = 0
+    for idx, (name, age, sport, email, loc) in enumerate(_ROSTER):
+        sample = _sample_email(email)
+        if exists(email):                   # the local seed already has them
+            continue
+        row = db.execute("SELECT id FROM users WHERE email = ?",
+                         (sample,)).fetchone()
+        if row is None:
+            uid = db.execute(
+                "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
+                "created_at) VALUES ('athlete',?,?,'',?,1,?)",
+                (name, sample, unusable, now_iso())).lastrowid
+            added += 1
+        else:
+            uid = row["id"]
+        db.execute("INSERT OR IGNORE INTO athlete_profiles (user_id,sport,age,"
+                   "location) VALUES (?,?,?,?)", (uid, sport, age, loc))
+        if db.execute("SELECT COUNT(*) FROM reports WHERE athlete_id = ?",
+                      (uid,)).fetchone()[0] == 0:
+            # seeded per person, so the history is stable across deploys
+            _write_roster_reports(db, uid, sport, _ROSTER_DRIFT[idx],
+                                  random.Random(1000 + idx))
+
+    for nm, email, _phone, spec, bio, exp, city, ach in _SAMPLE_COACHES:
+        sample = _sample_email(email)
+        if exists(email) or exists(sample):
+            continue
+        cid = db.execute(
+            "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
+            "created_at) VALUES ('coach',?,?,'',?,1,?)",
+            (nm, sample, unusable, now_iso())).lastrowid
+        db.execute("INSERT INTO coach_profiles (user_id,specialty,bio,"
+                   "experience,city,achievements) VALUES (?,?,?,?,?,?)",
+                   (cid, spec, bio, exp, city, json.dumps(ach)))
+        added += 1
+    if added:
+        print("[INFO] Demo sample roster: %d sample profiles added "
+              "(display only - nobody can sign in as them)." % added)
+
+
+def remove_demo_data():
+    """Delete everything DEMO_MODE created: the sample roster and the two
+    demo logins. Run after judging, with DEMO_MODE turned off first (or the
+    next start would simply create it all again).
+
+    Only touches rows it can identify with certainty: the reserved sample
+    domain, and the two demo addresses - and those only while they are
+    ordinary athlete/coach accounts. Reports, profiles and messages go with
+    them through ON DELETE CASCADE.
+
+        python -c "from athletix.bootstrap import remove_demo_data; remove_demo_data()"
+    """
+    db = connect()
+    try:
+        sample = db.execute("DELETE FROM users WHERE email LIKE ?",
+                            ("%@" + DEMO_SAMPLE_DOMAIN,)).rowcount
+        logins = db.execute(
+            "DELETE FROM users WHERE email IN (?, ?) "
+            "AND role IN ('athlete', 'coach')",
+            (DEMO_ATHLETE_EMAIL, DEMO_COACH_EMAIL)).rowcount
+        db.commit()
+        print("[INFO] Removed %d sample profiles and %d demo logins."
+              % (sample, logins))
+        return sample, logins
+    finally:
+        db.close()
+
+
 def _ensure_demo_user(db, email, role, name):
     """Create or refresh one demo account. Returns its id, or None if the
     account was refused.
@@ -327,6 +436,8 @@ def ensure_demo_accounts():
                  "Demo coach account for evaluating AthletixAI.", 5, "Delhi",
                  json.dumps(["Demo account"])))
             _DEMO_READY.add("coach")
+        if _DEMO_READY:
+            _ensure_demo_roster(db)
         db.commit()
         print("[INFO] Demo access is ON. Athlete: %s  Coach: %s  "
               "(password comes from DEMO_PASSWORD and is never printed)"
@@ -365,7 +476,10 @@ def startup_checks(app=None):
                         "their password is SHOWN on the login page. They "
                         "carry no admin or owner rights and cannot change "
                         "their password, e-mail or delete themselves - but "
-                        "anyone can use them. Turn this off after judging.")
+                        "anyone can use them. It also adds display-only "
+                        "sample athletes and coaches that every user sees. "
+                        "Turn this off after judging and run "
+                        "remove_demo_data().")
         if EMAIL_DEV_MODE:
             warn.append("SMTP is not configured. Verification and password "
                         "reset e-mails cannot be delivered, so new users "

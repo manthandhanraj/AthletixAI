@@ -133,10 +133,13 @@ def test_demo_accounts_created_on_non_empty_database(flask_app, monkeypatch,
 
     assert _user(flask_app, DEMO_ATHLETE) is not None
     assert _user(flask_app, DEMO_COACH) is not None
-    # the accounts that were already there are untouched
+    # the accounts that were already there are untouched: the only new rows
+    # are the two logins plus the display-only sample roster
     with flask_app.app_context():
         assert appmod.get_db().execute(
-            "SELECT COUNT(*) FROM users").fetchone()[0] == existing + 2
+            "SELECT COUNT(*) FROM users WHERE email NOT LIKE ?",
+            ("%@" + bootstrap.DEMO_SAMPLE_DOMAIN,)).fetchone()[0] \
+            == existing + 2
 
 
 # ── password rotation ─────────────────────────────────────────────────────
@@ -407,3 +410,157 @@ def test_lock_lifts_when_demo_mode_is_off(monkeypatch):
     assert cfg.is_demo_email(DEMO_ATHLETE) is False
     _enable(monkeypatch)
     assert cfg.is_demo_email(DEMO_ATHLETE.upper()) is True
+
+
+# ── sample roster: the people a demo needs to have something to show ─────
+SAMPLE = "@" + bootstrap.DEMO_SAMPLE_DOMAIN
+
+
+def _sample_rows(flask_app):
+    with flask_app.app_context():
+        return appmod.get_db().execute(
+            "SELECT id, role, name, email, phone FROM users WHERE email LIKE ?"
+            " ORDER BY id", ("%" + SAMPLE,)).fetchall()
+
+
+def test_sample_roster_is_created_with_demo_mode(flask_app, monkeypatch):
+    _enable(monkeypatch)
+    bootstrap.ensure_demo_accounts()
+    rows = _sample_rows(flask_app)
+    athletes = [r for r in rows if r["role"] == "athlete"]
+    coaches = [r for r in rows if r["role"] == "coach"]
+    assert len(athletes) == len(bootstrap._ROSTER) == 12
+    assert len(coaches) == len(bootstrap._SAMPLE_COACHES) == 3
+    assert "Arjun Singh" in {r["name"] for r in athletes}
+    assert all(r["phone"] == "" for r in rows)       # no fake phone numbers
+    with flask_app.app_context():
+        db = appmod.get_db()
+        for r in athletes:
+            assert db.execute("SELECT COUNT(*) FROM reports WHERE athlete_id=?",
+                              (r["id"],)).fetchone()[0] == 6
+            assert db.execute("SELECT 1 FROM athlete_profiles WHERE user_id=?",
+                              (r["id"],)).fetchone() is not None
+
+
+def test_sample_roster_never_includes_an_admin(flask_app, monkeypatch):
+    _enable(monkeypatch)
+    bootstrap.ensure_demo_accounts()
+    with flask_app.app_context():
+        privileged = appmod.get_db().execute(
+            "SELECT COUNT(*) FROM users WHERE role IN ('admin','owner') "
+            "AND email <> ?", (bootstrap.OWNER_EMAIL,)).fetchone()[0]
+    assert privileged == 0
+
+
+@pytest.mark.parametrize("password", [DEMO_PW, bootstrap.SEED_PASSWORD, ""])
+def test_nobody_can_sign_in_as_a_sample_person(flask_app, monkeypatch,
+                                               client, password):
+    """The local seed's password is public; these rows must not honour it,
+    nor the demo password."""
+    _enable(monkeypatch)
+    bootstrap.ensure_demo_accounts()
+    resp, _ = client.login("arjun" + SAMPLE, password)
+    assert resp.status_code != 200
+
+
+def test_demo_coach_sees_the_sample_athletes(flask_app, monkeypatch, client):
+    """The actual complaint: on the deployed app the demo coach's lists were
+    empty."""
+    _enable(monkeypatch)
+    bootstrap.ensure_demo_accounts()
+    client.login(DEMO_COACH, DEMO_PW)
+    names = {a["name"] for a in
+             client.json(client.get("/api/directory/athletes"))["athletes"]}
+    assert {"Arjun Singh", "Priya Sharma", "Divya Mishra", "Demo Athlete"} \
+        <= names
+    coaches = {c["name"] for c in
+               client.json(client.get("/api/directory/coaches"))["coaches"]}
+    assert {"Coach Verma", "Coach Meera Iyer", "Demo Coach"} <= coaches
+
+
+def test_sample_roster_is_not_duplicated_on_restart(flask_app, monkeypatch):
+    _enable(monkeypatch)
+    bootstrap.ensure_demo_accounts()
+
+    def counts():
+        with flask_app.app_context():
+            db = appmod.get_db()
+            return (db.execute("SELECT COUNT(*) FROM users WHERE email LIKE ?",
+                               ("%" + SAMPLE,)).fetchone()[0],
+                    db.execute("SELECT COUNT(*) FROM reports").fetchone()[0])
+
+    first = counts()
+    bootstrap.ensure_demo_accounts()
+    bootstrap.ensure_demo_accounts()
+    assert counts() == first
+
+
+def test_sample_roster_skips_people_the_local_seed_created(flask_app,
+                                                          monkeypatch):
+    """SEED_DEMO and DEMO_MODE together on a laptop: nobody shown twice."""
+    with flask_app.app_context():
+        db = appmod.get_db()
+        db.execute(
+            "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
+            "created_at) VALUES ('athlete','Arjun Singh','arjun@athletix.ai',"
+            "'','x',1,?)", (appmod.now_iso(),))
+        db.commit()
+    _enable(monkeypatch)
+    bootstrap.ensure_demo_accounts()
+    with flask_app.app_context():
+        arjuns = appmod.get_db().execute(
+            "SELECT COUNT(*) FROM users WHERE name = 'Arjun Singh'"
+        ).fetchone()[0]
+    assert arjuns == 1
+
+
+def test_no_sample_roster_without_demo_mode(flask_app, monkeypatch):
+    _enable(monkeypatch, mode=False)
+    bootstrap.ensure_demo_accounts()
+    assert _sample_rows(flask_app) == []
+
+
+def test_no_sample_roster_when_the_demo_logins_failed(flask_app, monkeypatch):
+    _enable(monkeypatch, password="")
+    bootstrap.ensure_demo_accounts()
+    assert _sample_rows(flask_app) == []
+
+
+# ── clean-up after judging ────────────────────────────────────────────────
+def test_remove_demo_data_removes_only_what_demo_mode_created(
+        flask_app, monkeypatch, athlete):
+    _enable(monkeypatch)
+    bootstrap.ensure_demo_accounts()
+    assert _sample_rows(flask_app)
+
+    sample, logins = bootstrap.remove_demo_data()
+
+    assert sample == 15 and logins == 2
+    assert _sample_rows(flask_app) == []
+    assert _user(flask_app, DEMO_ATHLETE) is None
+    assert _user(flask_app, DEMO_COACH) is None
+    with flask_app.app_context():
+        db = appmod.get_db()
+        # their reports went with them (ON DELETE CASCADE)...
+        orphans = db.execute(
+            "SELECT COUNT(*) FROM reports WHERE athlete_id NOT IN "
+            "(SELECT id FROM users)").fetchone()[0]
+        # ...and real accounts are untouched
+        kept = {r[0] for r in db.execute("SELECT email FROM users")}
+    assert orphans == 0
+    assert "athlete.a@test.local" in kept
+    assert bootstrap.OWNER_EMAIL in kept
+
+
+def test_remove_demo_data_never_deletes_a_privileged_account(flask_app,
+                                                             monkeypatch):
+    with flask_app.app_context():
+        db = appmod.get_db()
+        db.execute(
+            "INSERT INTO users (role,name,email,phone,pass_hash,verified,"
+            "created_at) VALUES ('admin','Real Admin',?,'','x',1,?)",
+            (DEMO_COACH, appmod.now_iso()))
+        db.commit()
+    _enable(monkeypatch)
+    bootstrap.remove_demo_data()
+    assert _user(flask_app, DEMO_COACH)["role"] == "admin"
